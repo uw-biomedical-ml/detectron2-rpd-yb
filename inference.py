@@ -17,9 +17,10 @@ from tqdm import tqdm
 from detectron2.data import DatasetCatalog
 from detectron2.data import MetadataCatalog
 import pickle
+import pdb
 
 rootdir = "/data/amd-data/cera-rpd/cera-rpd-train/data_RPDHimeesh_combined/"
-testdir = f"{rootdir}/test/images/all/"
+testdir = f"{rootdir}/valid/images/all/"
 
 th = 0.1
 
@@ -48,19 +49,37 @@ def main(args):
     cfg.MODEL.WEIGHTS = args.checkpoint
     print(cfg.MODEL.WEIGHTS)
     pred = DefaultPredictor(cfg)
-    for fn in tqdm(glob.glob(f"{testdir}/*.png")):
+    filelist = glob.glob(f"{testdir}/*.png")
+    im = cv2.imread(filelist[0])
+    h,w = np.asarray(im).shape[0:2]
+    img = np.zeros((len(filelist),h,w,1))
+    msk = np.zeros((len(filelist),h,w,2))
+    out = np.zeros((len(filelist),h,w,2))
+    ii = 0
+    for fn in tqdm(filelist):
         fstem = fn.split("/")[-1]
         segfn = fn.replace("/images/", "/masks/").replace("_oct", "_msk")
         gt = cv2.imread(segfn)
         im = cv2.imread(fn)
         outputs = pred(im)["instances"].to("cpu")
         filtered = outputs[outputs.scores > th]
-        v = Visualizer(im, MetadataCatalog.get("rpd_valid"), scale=1.0)
+        img[ii,:,:,0] = cv2.imread(fn,cv2.IMREAD_GRAYSCALE)
+        msk[ii,:,:,0] = cv2.imread(segfn,cv2.IMREAD_GRAYSCALE)
+        out[ii,:,:,0] = np.uint8(np.any(np.asarray(filtered.pred_masks),axis=0))
+        if len(filtered)==12: 
+            pdb.set_trace() 
+        v = Visualizer(im, MetadataCatalog.get("rpd_valid"), scale=3.0)
         result = v.draw_instance_predictions(filtered)
         result_image = result.get_image()[:, :, ::-1]
-        final = np.vstack((im, result_image, gt))
+        im_scaled = cv2.resize(im,result_image.shape[0:2][::-1],interpolation=cv2.INTER_NEAREST)
+        gt_scaled = cv2.resize(gt,result_image.shape[0:2][::-1],interpolation=cv2.INTER_NEAREST)
+        final = np.vstack((im_scaled, result_image, gt_scaled))
         cv2.imwrite(f"results/{fstem}", final)
-
+        ii = ii+1
+    msk[:,:,:,0] = msk[:,:,:,0]/255
+    msk[:,:,:,1] = 1-msk[:,:,:,0]
+    out[:,:,:,1] = 1-out[:,:,:,0]
+    np.savez('./nppred/detectron_rpd_valid_vv.npz',output=out,imgs=img,masks=msk) 
     return
 
 
