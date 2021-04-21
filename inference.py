@@ -27,6 +27,11 @@ th = 0.1
 def grab_valid():
     return pickle.load( open( "datasets/valid.pk", "rb" ) )
 
+def grab_test():
+    return pickle.load( open( "datasets/test.pk", "rb" ) )
+
+def grab_train():
+    return pickle.load( open( "datasets/train.pk", "rb" ) )
 
 def setup(args):
     """
@@ -41,6 +46,7 @@ def setup(args):
 
 
 def main(args):
+    pdb.set_trace()
     DatasetCatalog.register("rpd_valid", grab_valid)
     MetadataCatalog.get("rpd_valid").thing_classes = ["rpd"]
     cfg = setup(args)
@@ -49,14 +55,19 @@ def main(args):
     cfg.MODEL.WEIGHTS = args.checkpoint
     print(cfg.MODEL.WEIGHTS)
     pred = DefaultPredictor(cfg)
-    filelist = glob.glob(f"{testdir}/*.png")
-    im = cv2.imread(filelist[0])
-    h,w = np.asarray(im).shape[0:2]
-    img = np.zeros((len(filelist),h,w,1))
-    msk = np.zeros((len(filelist),h,w,2))
-    out = np.zeros((len(filelist),h,w,2))
+    data = DatasetCatalog.get('rpd_valid')#grab the data annotations
+    h = data[0][height]
+    w = data[0][width]
+    nfiles = len(data)
+    #filelist = glob.glob(f"{testdir}/*.png")
+    #im = cv2.imread(filelist[0])
+    #h,w = np.asarray(im).shape[0:2]
+    img = np.zeros((nfiles,h,w,1))
+    msk = np.zeros((nfiles,h,w,2))
+    out = np.zeros((nfiles,h,w,2))
     ii = 0
-    for fn in tqdm(filelist):
+    for dat in tqdm(data):
+        fn = dat['file_name']
         fstem = fn.split("/")[-1]
         segfn = fn.replace("/images/", "/masks/").replace("_oct", "_msk")
         gt = cv2.imread(segfn)
