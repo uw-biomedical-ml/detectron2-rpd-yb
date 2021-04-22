@@ -46,7 +46,6 @@ def setup(args):
 
 
 def main(args):
-    pdb.set_trace()
     DatasetCatalog.register("rpd_valid", grab_valid)
     MetadataCatalog.get("rpd_valid").thing_classes = ["rpd"]
     cfg = setup(args)
