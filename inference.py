@@ -25,13 +25,13 @@ testdir = f"{rootdir}/valid/images/all/"
 th = 0.1
 
 def grab_valid():
-    return pickle.load( open( "datasets/valid.pk", "rb" ) )
+    return pickle.load( open( "datasets/valid_refined.pk", "rb" ) )
 
 def grab_test():
-    return pickle.load( open( "datasets/test.pk", "rb" ) )
+    return pickle.load( open( "datasets/test_refined.pk", "rb" ) )
 
 def grab_train():
-    return pickle.load( open( "datasets/train.pk", "rb" ) )
+    return pickle.load( open( "datasets/train_refined.pk", "rb" ) )
 
 def setup(args):
     """
@@ -76,8 +76,8 @@ def main(args):
         img[ii,:,:,0] = cv2.imread(fn,cv2.IMREAD_GRAYSCALE)
         msk[ii,:,:,0] = cv2.imread(segfn,cv2.IMREAD_GRAYSCALE)
         out[ii,:,:,0] = np.uint8(np.any(np.asarray(filtered.pred_masks),axis=0))
-        if len(filtered)==12: 
-            pdb.set_trace() 
+        #if len(filtered)==12: 
+            #pdb.set_trace() 
         v = Visualizer(im, MetadataCatalog.get("rpd_valid"), scale=3.0)
         result = v.draw_instance_predictions(filtered)
         result_image = result.get_image()[:, :, ::-1]

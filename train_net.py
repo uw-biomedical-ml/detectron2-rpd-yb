@@ -43,9 +43,9 @@ from detectron2.data import MetadataCatalog
 import pickle
 
 def grab_train():
-    return pickle.load( open( "datasets/train.pk", "rb" ) )
+    return pickle.load( open( "datasets/train_refined.pk", "rb" ) )
 def grab_valid():
-    return pickle.load( open( "datasets/valid.pk", "rb" ) )
+    return pickle.load( open( "datasets/valid_refined.pk", "rb" ) )
 
 
 
