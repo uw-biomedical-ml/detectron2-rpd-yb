@@ -96,13 +96,13 @@ class OutputVis():
         BBoxes = detectron2.structures.Boxes(bboxes)
         BBoxes = detectron2.structures.BoxMode.convert(BBoxes.tensor,from_mode=1,to_mode=0) #1= XYXY, 2 = XYWH
         segs = [ddict['segmentation'] for ddict in dat['annotations']]
-        v = Visualizer(im, MetadataCatalog.get("rpd_valid"), scale=3.0)
+        v = Visualizer(im, MetadataCatalog.get(self.dataset_name), scale=3.0)
         result_image = v.overlay_instances(boxes=BBoxes,masks=segs).get_image()
         img = Image.fromarray(result_image)
         
         outputs = self.predictor(im)["instances"].to("cpu")
         outputs = outputs[outputs.scores>self.prob_thresh]
-        v2 = Visualizer(im, MetadataCatalog.get("rpd_valid"), scale=3.0)
+        v2 = Visualizer(im, MetadataCatalog.get(self.dataset_name), scale=3.0)
         v2._default_font_size = 14
         result_model = v2.draw_instance_predictions(outputs).get_image()
         img_model = Image.fromarray(result_model)
@@ -160,6 +160,7 @@ class EvaluateClass(COCOEvaluator):
     
     def __init__(self,dataset_name, output_dir,prob_thresh=0.5,iou_thresh = 0.1,evalsuper=True):
         super().__init__(dataset_name,tasks={'bbox','segm'},output_dir = output_dir)
+        self.dataset_name = dataset_name
         self.mycoco=None #pycocotools.cocoEval instance
         self.cocoDt=None
         self.cocoGt=None
@@ -182,7 +183,7 @@ class EvaluateClass(COCOEvaluator):
         comm.synchronize()
         if not comm.is_main_process():
             return ()
-        self.cocoGt = COCO(os.path.join(self._output_dir,'rpd_valid_coco_format.json'))
+        self.cocoGt = COCO(os.path.join(self._output_dir,self.dataset_name +'_coco_format.json'))
         self.cocoDt = self.cocoGt.loadRes(os.path.join(self._output_dir,'coco_instances_results.json')) #load detector results
         self.mycoco = COCOeval(self.cocoGt,self.cocoDt,iouType ='segm')
         self.num_images = len(self.mycoco.params.imgIds)
@@ -207,6 +208,22 @@ class EvaluateClass(COCOEvaluator):
         p,r = self.get_precision_recall()
         return p,r
 
+    def plot_PRcurve(self):
+        for i in range(len(self.iou)):
+            plt.plot(self.rc,self.pr[i],label = '{:.2}'.format(self.iou[i]))
+        plt.xlabel('Recall')
+        plt.ylabel('Precision')
+        plt.title('')
+        plt.legend(title='IoU')
+        
+    def plot_recall_vs_prob(self):
+        plt.figure()
+        for i in range(len(self.iou)):
+            plt.plot(self.rc,self.scores[i],label = '{:.2}'.format(self.iou[i]))
+        plt.ylabel('Model probability')
+        plt.xlabel('Recall')
+        plt.legend(title='IoU')
+            
     def get_precision_recall(self):
         iou_idx,rc_idx = self._find_iou_rc_inds()
         precision = self.pr[iou_idx,rc_idx]
@@ -254,7 +271,7 @@ class EvaluateClass(COCOEvaluator):
     def summarize_scalars(self): #for pretty printing 
         p,r = self.get_precision_recall()
         fpr = self.get_fpr()
-        dd = dict(precision = p,recall=r,fpr=fpr,iou=self.iou_thresh,probabilty=self.prob_thresh)
+        dd = dict(dataset = self.dataset_name, precision = p,recall=r,fpr=fpr,iou=self.iou_thresh,probability=self.prob_thresh)
         return dd
 
     def build_dfimg(self):
@@ -316,11 +333,13 @@ def do_train(cfg, model, resume=False):
 
     # compared to "train_net.py", we do not support accurate timing and
     # precise BN here, because they are not trivial to implement in a small training loop
-    data_loader = build_detection_train_loader(cfg)#,
-    #    mapper=DatasetMapper(cfg, is_train=True, augmentations=[
-    #        T.something,
-    #        T.something
-    #    ]))
+    data_loader = build_detection_train_loader(cfg,
+       mapper=DatasetMapper(cfg, is_train=True, augmentations=[
+            T.RandomBrightness(.9, 1.1),
+            T.RandomFlip(prob=0.5),
+            T.RandomRotation([-10,10]),
+            T.RandomContrast(.8,1.2)
+       ]))
 
     logger.info("Starting training from iteration {}".format(start_iter))
     with EventStorage(start_iter) as storage:
