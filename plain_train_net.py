@@ -64,6 +64,10 @@ def grab_train():
     return pickle.load( open( "datasets/train_refined.pk", "rb" ) )
 def grab_valid():
     return pickle.load( open( "datasets/valid_refined.pk", "rb" ) )
+def grab_test():
+    return pickle.load( open( "datasets/test_refined.pk", "rb" ) )
+def grab_dataset(name):
+    return pickle.load( open( "datasets/"+name+"_refined.pk", "rb" ) )
 
 import detectron2
 from detectron2.engine import DefaultPredictor
@@ -333,13 +337,14 @@ def do_train(cfg, model, resume=False):
 
     # compared to "train_net.py", we do not support accurate timing and
     # precise BN here, because they are not trivial to implement in a small training loop
-    data_loader = build_detection_train_loader(cfg,
-       mapper=DatasetMapper(cfg, is_train=True, augmentations=[
-            T.RandomBrightness(.9, 1.1),
-            T.RandomFlip(prob=0.5),
-            T.RandomRotation([-10,10]),
-            T.RandomContrast(.8,1.2)
-       ]))
+    data_loader = build_detection_train_loader(cfg)
+    # data_loader = build_detection_train_loader(cfg,
+    #    mapper=DatasetMapper(cfg, is_train=True, augmentations=[
+    #         T.RandomBrightness(.9, 1.1),
+    #         T.RandomFlip(prob=0.5),
+    #         T.RandomRotation([-10,10]),
+    #         T.RandomContrast(.8,1.2)
+    #    ]))
 
     logger.info("Starting training from iteration {}".format(start_iter))
     with EventStorage(start_iter) as storage:
@@ -398,11 +403,19 @@ def setup(args):
 
 
 def main(args):
-    DatasetCatalog.register("rpd_train", grab_train)
-    DatasetCatalog.register("rpd_valid", grab_valid)
-    MetadataCatalog.get("rpd_valid").thing_classes = ["rpd"]
+    # DatasetCatalog.register("rpd_train", grab_train)
+    # DatasetCatalog.register("rpd_valid", grab_valid)
+    # MetadataCatalog.get("rpd_valid").thing_classes = ["rpd"]
 
     cfg = setup(args)
+    for name in cfg.DATASETS.TRAIN:
+        myfunc = lambda : grab_dataset(name)
+        DatasetCatalog.register(name, myfunc)
+        MetadataCatalog.get(name).thing_classes = ["rpd"]
+    for name in cfg.DATASETS.TEST:
+        myfunc = lambda : grab_dataset(name)
+        DatasetCatalog.register(name, myfunc)
+        MetadataCatalog.get(name).thing_classes = ["rpd"]
 
     model = build_model(cfg)
     logger.info("Model:\n{}".format(model))

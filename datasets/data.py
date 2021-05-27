@@ -3,7 +3,6 @@
 from detectron2.data import DatasetCatalog
 from glob import glob
 import numpy as np
-import pycocotools
 import os
 import cv2
 from detectron2.structures import BoxMode
@@ -14,7 +13,7 @@ import matplotlib.pyplot as plt
 from matplotlib.backends.backend_pdf import PdfPages
 import pdb
 
-rootdir = "/data/amd-data/cera-rpd/cera-rpd-train/data_RPDHimeesh_combined/"
+rootdir = "/data/amd-data/cera-rpd/cera-rpd-train/data_RPDHimeesh_combined_folds/"
 
     
 def findEdgeIndex(df,thbool,idx):
@@ -134,7 +133,7 @@ def rpd_data(grp = "train"):
     instances = 0
     wrong_poly = 0
     ii=0
-    outname = './datasets/'+grp+'_instance_refine_all.pdf'
+    outname = './'+grp+'_instance_refine_all.pdf'
     with PdfPages(outname) as pdf:
         for fn in tqdm(glob(f"{rootdir}/{grp}/images/all/*.png")):
             imageid = fn.split("/")[-1]
@@ -188,7 +187,7 @@ def rpd_data(grp = "train"):
 
 
 if __name__ == "__main__":
-    for grp in ("train", "valid", "test"):
+    for grp in ("fold1", "fold2", "fold3", "fold4","fold5"):
         print(grp)
         data = rpd_data(grp=grp)
         pickle.dump(data, open(f"{grp}_refined.pk", "wb"))
