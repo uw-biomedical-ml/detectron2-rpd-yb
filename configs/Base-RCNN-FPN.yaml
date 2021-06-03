@@ -29,9 +29,6 @@ MODEL:
     NAME: "MaskRCNNConvUpsampleHead"
     NUM_CONV: 4
     POOLER_RESOLUTION: 14
-DATASETS:
-  TRAIN: ("rpd_train",)
-  TEST: ("rpd_valid",)
 SOLVER:
   IMS_PER_BATCH: 14
   BASE_LR: 0.02

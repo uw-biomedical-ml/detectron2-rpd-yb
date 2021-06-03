@@ -66,8 +66,11 @@ def grab_valid():
     return pickle.load( open( "datasets/valid_refined.pk", "rb" ) )
 def grab_test():
     return pickle.load( open( "datasets/test_refined.pk", "rb" ) )
+
 def grab_dataset(name):
-    return pickle.load( open( "datasets/"+name+"_refined.pk", "rb" ) )
+    def f():
+        return pickle.load( open( "datasets/"+name+"_refined.pk", "rb" ) )
+    return f   
 
 import detectron2
 from detectron2.engine import DefaultPredictor
@@ -275,9 +278,9 @@ class EvaluateClass(COCOEvaluator):
     def summarize_scalars(self): #for pretty printing 
         p,r = self.get_precision_recall()
         fpr = self.get_fpr()
-        dd = dict(dataset = self.dataset_name, precision = p,recall=r,fpr=fpr,iou=self.iou_thresh,probability=self.prob_thresh)
+        dd = dict(dataset = self.dataset_name, precision = float(p),recall=float(r),fpr=float(fpr),iou=self.iou_thresh,probability=self.prob_thresh)
         return dd
-
+ ##less general methods specific to RPD, may want to put in a derived class
     def build_dfimg(self):
         df = pd.DataFrame(index = self.cocoGt.imgs.keys(), columns=['gt_instances','gt_pxs','gt_xpxs','dt_instances','dt_pxs','dt_xpxs'],dtype=np.uint64)
 
@@ -299,8 +302,181 @@ class EvaluateClass(COCOEvaluator):
             df.loc[key] = dat
             self.dfimg = df
 
+class CreatePlotsRPD():
+    def __init__(self,dfimg):
+        newdf = pd.DataFrame([idx.strip('.png').split('_') for idx in dfimg.index],columns=['ptid','eye','scan'],index = dfimg.index)
+        self.dfimg = dfimg.merge(newdf,how='inner',left_index=True,right_index=True)
+        self.dfpts = self.dfimg.groupby(['ptid','eye'])['gt_instances','gt_pxs','gt_xpxs','dt_instances','dt_pxs','dt_xpxs'].sum()
+        
+    def get_max_limits(self,df):
+        max_inst=np.max([df.gt_instances.max(),df.dt_instances.max()])
+        max_xpxs = np.max([df.gt_xpxs.max(),df.dt_xpxs.max()])
+        max_pxs = np.max([df.gt_pxs.max(),df.dt_pxs.max()])
+#         print('Max instances:',max_inst)
+#         print('Max xpxs:',max_xpxs)
+#         print('Max pxs:',max_pxs)
+        return max_inst,max_xpxs,max_pxs
+        
+    def plot_img_level_instance_thresholding(self,df,inst):
+
+        rc = np.zeros((len(inst),))
+        pr = np.zeros((len(inst),))
+        fpr = np.zeros((len(inst),))
+
+        fig, ax = plt.subplots(1,3,figsize = [15,5])
+        for i,dt_thresh in enumerate(inst):
+            gt = df.gt_instances>dt_thresh
+            dt = df.dt_instances>dt_thresh
+            rc[i] = (gt&dt).sum()/gt.sum()
+            pr[i] = (gt&dt).sum()/dt.sum()
+            fpr[i] = ((~gt)&(dt)).sum()/((~gt).sum())
+
+        ax[1].plot(inst,pr)
+        ax[1].set_ylim(0.45,1)
+        ax[1].set_xlabel('instance threshold')
+        ax[1].set_ylabel('Precision')
 
 
+        ax[0].plot(inst,rc)
+        ax[0].set_ylim(0.45,1)
+        ax[0].set_ylabel('Recall')
+        ax[0].set_xlabel('instance threshold')
+
+
+        ax[2].plot(inst,fpr)
+        ax[2].set_ylim(0,0.06)
+        ax[2].set_xlabel('instance threshold')
+        ax[2].set_ylabel('FPR')
+
+        plt.tight_layout()
+        return pr,rc,fpr
+
+    def gt_vs_dt_instances(self):
+        df = self.dfimg
+        max_inst,max_xpxs,max_pxs = self.get_max_limits(df)
+        idx = (df.gt_instances>0)&(df.dt_instances>0)
+        
+        fig = plt.figure(dpi=100)
+        ax = fig.add_subplot(111)
+        y = df[idx].groupby('gt_instances')['dt_instances'].mean()
+        yerr = df[idx].groupby('gt_instances')['dt_instances'].std()
+        ax.errorbar(y.index,y.values,yerr.values,fmt='*')
+        plt.plot([0,max_inst],[0,max_inst],alpha=.5)
+        plt.xlim(0,max_inst+1)
+        plt.ylim(0,max_inst+1)
+        ax.set_aspect(1)
+        plt.xlabel('gt_instances')
+        plt.ylabel('dt_instances')
+        plt.tight_layout()
+        return fig
+        
+    def gt_vs_dt_xpxs(self):
+        df = self.dfimg
+        max_inst,max_xpxs,max_pxs = self.get_max_limits(df)
+        idx = (df.gt_instances>0)&(df.dt_instances>0)
+        dfsub = df[idx]
+        
+        fig1 = plt.figure(figsize = [10,10],dpi=100)
+        ax = fig1.add_subplot(111)
+        sc = ax.scatter(dfsub['gt_xpxs'],dfsub['dt_xpxs'],c =dfsub['gt_instances'] ,cmap='viridis')
+        ax.set_aspect(1)
+        #ax = dfsub.plot(kind = 'scatter',x=,y=,c='gt_instances')
+        plt.plot([0,max_xpxs],[0,max_xpxs],alpha=.5)
+        plt.xlim(0,max_xpxs)
+        plt.ylim(0,max_xpxs)
+        plt.xlabel('gt_xpxs')
+        plt.ylabel('dt_xpxs')
+        cbar = plt.colorbar(sc)
+        cbar.ax.set_ylabel('gt_instances')
+        plt.tight_layout()
+        
+        fig2 = plt.figure(figsize = [10,10],dpi=100)
+        ax = fig2.add_subplot(111)
+        sc = ax.scatter(dfsub['gt_xpxs'],dfsub['gt_xpxs']-dfsub['dt_xpxs'],c =dfsub['gt_instances'] ,cmap='viridis')
+        #ax = dfsub.plot(kind = 'scatter',x=,y=,c='gt_instances')
+        plt.plot([0,max_xpxs],[0,0],alpha=.5)
+        plt.xlabel('gt_xpxs')
+        plt.ylabel('gt_xpxs-dt_xpxs')
+        cbar = plt.colorbar(sc)
+        cbar.ax.set_ylabel('gt_instances')
+        plt.tight_layout()
+        
+        fig3 = plt.figure(dpi=100)
+        plt.hist(dfsub['gt_xpxs']-dfsub['dt_xpxs'])
+        plt.xlabel('gt_xpxs - dt_xpxs')
+        plt.ylabel('B-scans')
+        
+        return fig1,fig2,fig3
+    
+    def gt_vs_dt_xpxs_mu(self):
+        df = self.dfimg
+        max_inst,max_xpxs,max_pxs = self.get_max_limits(df)
+        idx = (df.gt_instances>0)&(df.dt_instances>0)
+        dfsub = df[idx]
+        
+        from scipy import stats
+        mu_dt,bins,bnum = stats.binned_statistic(dfsub['gt_xpxs'],dfsub['dt_xpxs'],statistic = 'mean',bins=10)
+        std_dt,_,_ = stats.binned_statistic(dfsub['gt_xpxs'],dfsub['dt_xpxs'],statistic = 'std',bins = bins)
+        mu_gt,_,_ = stats.binned_statistic(dfsub['gt_xpxs'],dfsub['gt_xpxs'],statistic='mean',bins=bins)
+        std_gt,_,_ = stats.binned_statistic(dfsub['gt_xpxs'],dfsub['gt_xpxs'],statistic = 'std',bins = bins)
+        fig = plt.figure(dpi=100)
+        plt.errorbar(mu_gt,mu_dt,yerr = std_dt,xerr=std_gt,fmt='*')
+        plt.xlabel('gt_xpxs')
+        plt.ylabel('dt_xpxs')
+        plt.plot([0,max_xpxs],[0,max_xpxs],alpha=.5)
+        plt.xlim(0,max_xpxs)
+        plt.ylim(0,max_xpxs)
+        plt.gca().set_aspect(1)
+        plt.tight_layout()
+        return fig
+
+    def gt_dt_FP_FN_count(self):
+        df = self.dfimg
+        fig,ax =plt.subplots(1,2,figsize=[10,5])
+
+        idx = (df.gt_instances==0)&(df.dt_instances>0)
+        ax[0].hist(df[idx]['dt_instances'],bins = range(1,10))
+        ax[0].set_xlabel('dt instances')
+        ax[0].set_ylabel('B-scans')
+        ax[0].set_title('FP dt instance count per B-scan')
+
+        idx = (df.gt_instances>0)&(df.dt_instances==0)
+        ax[1].hist(df[idx]['gt_instances'],bins = range(1,10))
+        ax[1].set_xlabel('gt instances')
+        ax[1].set_ylabel('B-scans')
+        ax[1].set_title('FN gt instance count per B-scan')
+
+        plt.tight_layout()
+        return fig
+    
+    def avg_inst_size(self):
+        df = self.dfimg
+        max_inst,max_xpxs,max_pxs = self.get_max_limits(df)
+        idx = (df.gt_instances>0)&(df.dt_instances>0)
+        dfsub = df[idx]
+        
+        fig = plt.figure(figsize=[10,5])
+        plt.subplot(121)
+        bins = np.arange(0,120,10)
+        ax = (dfsub.gt_xpxs/dfsub.gt_instances).hist(bins = bins,alpha=.5,label='gt')
+        ax = (dfsub.dt_xpxs/dfsub.dt_instances).hist(bins=bins,alpha=.5,label='dt')
+        ax.set_xlabel('xpxs')
+        ax.set_ylabel('B-scans')
+        ax.set_title('Average size of instance')
+        ax.legend()
+
+        plt.subplot(122)
+        bins = np.arange(0,600,40)
+        ax = (dfsub.gt_pxs/dfsub.gt_instances).hist(bins=bins,alpha=.5,label='gt')
+        ax = (dfsub.dt_pxs/dfsub.dt_instances).hist(bins=bins,alpha=.5,label='dt')
+        ax.set_xlabel('pxs')
+        ax.set_ylabel('B-scans')
+        ax.set_title('Average size of instance')
+        ax.legend()
+
+        plt.tight_layout()
+        return fig
+    
 def do_test(cfg, model):
     results = OrderedDict()
     for dataset_name in cfg.DATASETS.TEST:
@@ -409,12 +585,10 @@ def main(args):
 
     cfg = setup(args)
     for name in cfg.DATASETS.TRAIN:
-        myfunc = lambda : grab_dataset(name)
-        DatasetCatalog.register(name, myfunc)
+        DatasetCatalog.register(name, grab_dataset(name))
         MetadataCatalog.get(name).thing_classes = ["rpd"]
     for name in cfg.DATASETS.TEST:
-        myfunc = lambda : grab_dataset(name)
-        DatasetCatalog.register(name, myfunc)
+        DatasetCatalog.register(name,grab_dataset(name))
         MetadataCatalog.get(name).thing_classes = ["rpd"]
 
     model = build_model(cfg)
