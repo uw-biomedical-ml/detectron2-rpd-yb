@@ -280,34 +280,43 @@ class EvaluateClass(COCOEvaluator):
         fpr = self.get_fpr()
         dd = dict(dataset = self.dataset_name, precision = float(p),recall=float(r),fpr=float(fpr),iou=self.iou_thresh,probability=self.prob_thresh)
         return dd
- ##less general methods specific to RPD, may want to put in a derived class
-    def build_dfimg(self):
-        df = pd.DataFrame(index = self.cocoGt.imgs.keys(), columns=['gt_instances','gt_pxs','gt_xpxs','dt_instances','dt_pxs','dt_xpxs'],dtype=np.uint64)
-
-        for key,val in self.cocoGt.imgs.items():
-            imgid = val['id']
-            #Gt instances
-            annIdsGt = self.mycoco.cocoGt.getAnnIds([imgid])
-            annsGt = self.mycoco.cocoGt.loadAnns(annIdsGt)
-            instGt = [self.mycoco.cocoGt.annToMask(ann).sum() for ann in annsGt]
-            xprojGt = [(self.mycoco.cocoGt.annToMask(ann).sum(axis=0)>0).astype('uint8').sum() for ann in annsGt] 
-            #Dt instances
-            annIdsDt = self.mycoco.cocoDt.getAnnIds([imgid])
-            annsDt = self.mycoco.cocoDt.loadAnns(annIdsDt)
-            annsDt = [ann for ann in annsDt if ann['score']>self.prob_thresh]
-            instDt = [self.mycoco.cocoDt.annToMask(ann).sum() for ann in annsDt]
-            xprojDt = [(self.mycoco.cocoDt.annToMask(ann).sum(axis=0)>0).astype('uint8').sum() for ann in annsDt]
-                
-            dat = [len(instGt),np.array(instGt).sum(),np.array(xprojGt).sum(),len(instDt),np.array(instDt).sum(),np.array(xprojDt).sum()]
-            df.loc[key] = dat
-            self.dfimg = df
 
 class CreatePlotsRPD():
     def __init__(self,dfimg):
-        newdf = pd.DataFrame([idx.strip('.png').split('_') for idx in dfimg.index],columns=['ptid','eye','scan'],index = dfimg.index)
-        self.dfimg = dfimg.merge(newdf,how='inner',left_index=True,right_index=True)
-        self.dfpts = self.dfimg.groupby(['ptid','eye'])['gt_instances','gt_pxs','gt_xpxs','dt_instances','dt_pxs','dt_xpxs'].sum()
+        self.dfimg = dfimg
+        self.dfpts = self.dfimg.groupby(['ptid','eye'])[['gt_instances','gt_pxs','gt_xpxs','dt_instances','dt_pxs','dt_xpxs']].sum()
         
+    @classmethod
+    def initfromcoco(cls,mycoco,prob_thresh):
+        df = pd.DataFrame(index = mycoco.cocoGt.imgs.keys(), columns=['gt_instances','gt_pxs','gt_xpxs','dt_instances','dt_pxs','dt_xpxs'],dtype=np.uint64)
+
+        for key,val in mycoco.cocoGt.imgs.items():
+            imgid = val['id']
+            #Gt instances
+            annIdsGt = mycoco.cocoGt.getAnnIds([imgid])
+            annsGt = mycoco.cocoGt.loadAnns(annIdsGt)
+            instGt = [mycoco.cocoGt.annToMask(ann).sum() for ann in annsGt]
+            xprojGt = [(mycoco.cocoGt.annToMask(ann).sum(axis=0)>0).astype('uint8').sum() for ann in annsGt] 
+            #Dt instances
+            annIdsDt = mycoco.cocoDt.getAnnIds([imgid])
+            annsDt = mycoco.cocoDt.loadAnns(annIdsDt)
+            annsDt = [ann for ann in annsDt if ann['score']>prob_thresh]
+            instDt = [mycoco.cocoDt.annToMask(ann).sum() for ann in annsDt]
+            xprojDt = [(mycoco.cocoDt.annToMask(ann).sum(axis=0)>0).astype('uint8').sum() for ann in annsDt]
+                
+            dat = [len(instGt),np.array(instGt).sum(),np.array(xprojGt).sum(),len(instDt),np.array(instDt).sum(),np.array(xprojDt).sum()]
+            df.loc[key] = dat
+            
+        newdf = pd.DataFrame([idx.strip('.png').split('_') for idx in df.index],columns=['ptid','eye','scan'],index = df.index)
+        df = df.merge(newdf,how='inner',left_index=True,right_index=True)
+        return cls(df)
+    
+    @classmethod
+    def initfromcsv(cls,fname):
+        df = pd.DataFrame.from_csv(fname)
+        return cls(df)
+    
+            
     def get_max_limits(self,df):
         max_inst=np.max([df.gt_instances.max(),df.dt_instances.max()])
         max_xpxs = np.max([df.gt_xpxs.max(),df.dt_xpxs.max()])
