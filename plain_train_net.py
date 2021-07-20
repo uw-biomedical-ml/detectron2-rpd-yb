@@ -162,9 +162,17 @@ class OutputVis():
 #                 imgpage.save(outname,'PDF',resolution=300)
             
                 
+# class EvaluateTemplate(COCOEvaluator):
+#     def __init__(self,dataset_name, output_dir):
+#         super().__init__(dataset_name,tasks={'bbox','segm'},output_dir = output_dir)
+#         self.dataset_name = dataset_name
+#     def reset(self): 
+#         super().reset()
+#     def process(self, inputs, outputs):
+#         super().process(inputs,outputs)
+#     def evaluate(self):
 
-class EvaluateClass(COCOEvaluator):
-    
+class EvaluateClass(COCOEvaluator):  
     def __init__(self,dataset_name, output_dir,prob_thresh=0.5,iou_thresh = 0.1,evalsuper=True):
         super().__init__(dataset_name,tasks={'bbox','segm'},output_dir = output_dir)
         self.dataset_name = dataset_name
@@ -190,7 +198,7 @@ class EvaluateClass(COCOEvaluator):
         comm.synchronize()
         if not comm.is_main_process():
             return ()
-        self.cocoGt = COCO(os.path.join(self._output_dir,self.dataset_name +'_coco_format.json'))
+        self.cocoGt = COCO(os.path.join(self._output_dir,self.dataset_name +'_coco_format.json')) #produced when super is initialized
         self.cocoDt = self.cocoGt.loadRes(os.path.join(self._output_dir,'coco_instances_results.json')) #load detector results
         self.mycoco = COCOeval(self.cocoGt,self.cocoDt,iouType ='segm')
         self.num_images = len(self.mycoco.params.imgIds)

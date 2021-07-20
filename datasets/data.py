@@ -13,8 +13,8 @@ import matplotlib.pyplot as plt
 from matplotlib.backends.backend_pdf import PdfPages
 import pdb
 
-rootdir = "/data/amd-data/cera-rpd/cera-rpd-train/data_RPDHimeesh_combined_folds/"
-
+# rootdir = "/data/amd-data/cera-rpd/cera-rpd-train/data_RPDHimeesh_combined_folds/"
+rootdir = "/data/amd-data/cera-rpd/cera-rpd-train/data_RPDHimeesh_101001_OS"
     
 def findEdgeIndex(df,thbool,idx):
     """Find the first location at which a threshold is met after a given index.
@@ -128,7 +128,7 @@ def visualize_breakup(im,binseg,segs,bumps,idx):
     return fig,ax
 
 
-def rpd_data(grp = "train"):
+def rpd_data(grp = "train",data_has_ann=True):
     dataset = []
     instances = 0
     wrong_poly = 0
@@ -142,40 +142,41 @@ def rpd_data(grp = "train"):
                 print(fn)
             im = cv2.imread(fn)
             seg = cv2.imread(segfn)
-            dat = dict(file_name = fn, height = im.shape[0], width = im.shape[1], image_id = imageid, annotations = [])
-            if (np.max(seg) != 0):
-                annotations = []
-                seg = seg[:, :, 0]
-                ret,binseg = cv2.threshold(seg, 128, 255, cv2.THRESH_BINARY)
-                #integral of segmentation
-                y = (binseg/binseg.max()).sum(axis=0).astype(int) 
-                df = pd.DataFrame(y,columns=['y'])
-                #find and break up segments into instances
-                segs = findSegments(df)
-                bumps = findBumps(df,segs,thresh=3)
-                idx = findBoundaries(df,bumps)
-                #insert breaks in image
-                for i in idx:
-                    binseg[:,i]=0
-                if len(idx)>0:
-                    fig,ax = visualize_breakup(im[:,:,0],binseg,segs,bumps,idx)
-                    pdf.savefig(fig)
-                    plt.close(fig)
-                #find contours and bounding boxes
-                _, contours, hierarchy = cv2.findContours(binseg, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
-                for c in contours:
-                    instances += 1
-                    x,y,w,h = cv2.boundingRect(c)
-                    if len(c) < 6: 
-                        wrong_poly += 1
-                        continue
+            dat = dict(file_name = fn, height = im.shape[0], width = im.shape[1], image_id = imageid)
+            if data_has_ann:              
+                if (np.max(seg) != 0):
+                    annotations = []
+                    seg = seg[:, :, 0]
+                    ret,binseg = cv2.threshold(seg, 128, 255, cv2.THRESH_BINARY)
+                    #integral of segmentation
+                    y = (binseg/binseg.max()).sum(axis=0).astype(int) 
+                    df = pd.DataFrame(y,columns=['y'])
+                    #find and break up segments into instances
+                    segs = findSegments(df)
+                    bumps = findBumps(df,segs,thresh=3)
+                    idx = findBoundaries(df,bumps)
+                    #insert breaks in image
+                    for i in idx:
+                        binseg[:,i]=0
+                    if len(idx)>0:
+                        fig,ax = visualize_breakup(im[:,:,0],binseg,segs,bumps,idx)
+                        pdf.savefig(fig)
+                        plt.close(fig)
+                    #find contours and bounding boxes
+                    _, contours, hierarchy = cv2.findContours(binseg, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+                    for c in contours:
+                        instances += 1
+                        x,y,w,h = cv2.boundingRect(c)
+                        if len(c) < 6: 
+                            wrong_poly += 1
+                            continue
 
-                    anot = dict(bbox = (x,y,w,h), 
-                            bbox_mode = BoxMode.XYWH_ABS, 
-                            category_id = 0, 
-                            segmentation = [c.flatten().tolist()])
-                    annotations.append(anot)
-                dat["annotations"] = annotations
+                        anot = dict(bbox = (x,y,w,h), 
+                                bbox_mode = BoxMode.XYWH_ABS, 
+                                category_id = 0, 
+                                segmentation = [c.flatten().tolist()])
+                        annotations.append(anot)
+                    dat["annotations"] = annotations
             dataset.append(dat)
             ii=ii+1
 #             if ii==500:
@@ -187,8 +188,10 @@ def rpd_data(grp = "train"):
 
 
 if __name__ == "__main__":
-    for grp in ("fold1", "fold2", "fold3", "fold4","fold5"):
+    #for grp in ("fold1", "fold2", "fold3", "fold4","fold5"):
+     for grp in ("dev",):
         print(grp)
-        data = rpd_data(grp=grp)
+        data = rpd_data(grp=grp,data_has_ann=False)
         pickle.dump(data, open(f"{grp}_refined.pk", "wb"))
+
 
