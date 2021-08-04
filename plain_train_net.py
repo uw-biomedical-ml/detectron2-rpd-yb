@@ -22,6 +22,7 @@ import torch
 from torch.nn.parallel import DistributedDataParallel
 from pycocotools.coco import COCO
 from pycocotools.cocoeval import COCOeval,Params
+from pycocotools.mask import decode
 
 import detectron2.utils.comm as comm
 from detectron2.checkpoint import DetectionCheckpointer, PeriodicCheckpointer
@@ -34,6 +35,7 @@ from detectron2.data import (
     DatasetMapper,
 )
 import detectron2.data.transforms as T
+from detectron2.structures import Instances
 
 from detectron2.engine import default_argument_parser, default_setup, default_writers, launch
 from detectron2.evaluation import (
@@ -75,6 +77,7 @@ def grab_dataset(name):
 import detectron2
 from detectron2.engine import DefaultPredictor
 from detectron2.utils.visualizer import Visualizer
+from detectron2.structures import Instances
 import cv2
 from PIL import Image
 import matplotlib
@@ -82,42 +85,77 @@ import matplotlib
 import matplotlib.pyplot as plt
 plt.style.use('ybpres.mplstyle')
 from matplotlib.backends.backend_pdf import PdfPages
+import json
+import sys
+
 
 
 class OutputVis():
-    
-    def __init__(self,dataset_name,cfg,prob_thresh):
+
+    def __init__(self,dataset_name,cfg=None,prob_thresh=0.5,pred_mode='model',pred_file=None,has_annotations=True):
         self.dataset_name = dataset_name
         self.cfg = cfg
         self.prob_thresh = prob_thresh
         self.data = DatasetCatalog.get(dataset_name)
-        self.predictor = DefaultPredictor(cfg)
-        
+        if pred_mode =='model':
+            self.predictor = DefaultPredictor(cfg)
+            self._mode = 'model'
+        elif pred_mode =='file':
+            with open(pred_file,'r') as f:
+                self.pred_instances = json.load(f)
+            self.instance_img_list = [p['image_id'] for p in self.pred_instances]
+            self._mode = 'file'
+        else:
+            sys.exit('Invalid mode. Only "model" or "file" permitted.')
+        self.has_annotations = has_annotations
 
     def get_image(self,ImgId):
-        gt_data = next(item for item in self.data if (item['image_id'] == ImgId))
-        
+        gt_data = next(item for item in self.data if (item['image_id'] == ImgId))   
         dat = gt_data #gt
         im = cv2.imread(dat['file_name']) #input to model
-        bboxes = [ddict['bbox'] for ddict in dat['annotations']]
-        BBoxes = detectron2.structures.Boxes(bboxes)
-        BBoxes = detectron2.structures.BoxMode.convert(BBoxes.tensor,from_mode=1,to_mode=0) #1= XYXY, 2 = XYWH
-        segs = [ddict['segmentation'] for ddict in dat['annotations']]
-        v = Visualizer(im, MetadataCatalog.get(self.dataset_name), scale=3.0)
-        result_image = v.overlay_instances(boxes=BBoxes,masks=segs).get_image()
+        v_gt = Visualizer(im, MetadataCatalog.get(self.dataset_name), scale=3.0)
+        if (self.has_annotations):
+            bboxes = [ddict['bbox'] for ddict in dat['annotations']]
+            BBoxes = detectron2.structures.Boxes(bboxes)
+            BBoxes = detectron2.structures.BoxMode.convert(BBoxes.tensor,from_mode=1,to_mode=0) #0= XYXY, 1 = XYWH
+            segs = [ddict['segmentation'] for ddict in dat['annotations']]
+            result_image = v_gt.overlay_instances(boxes=BBoxes,masks=segs).get_image()
+        else:
+            result_image = v_gt.output.get_image()
         img = Image.fromarray(result_image)
-        
-        outputs = self.predictor(im)["instances"].to("cpu")
-        outputs = outputs[outputs.scores>self.prob_thresh]
-        v2 = Visualizer(im, MetadataCatalog.get(self.dataset_name), scale=3.0)
-        v2._default_font_size = 14
-        result_model = v2.draw_instance_predictions(outputs).get_image()
+ 
+        v_dt = Visualizer(im, MetadataCatalog.get(self.dataset_name), scale=3.0)
+        v_dt._default_font_size = 14
+
+        if self._mode=='model':
+            outputs = self.predictor(im)["instances"].to("cpu")
+        elif self._mode=='file':
+            outputs = self.get_outputs_from_file(ImgId,(dat['height'],dat['width']),v_dt)  
+        outputs = outputs[outputs.scores>self.prob_thresh] #issues here
+        result_model = v_dt.draw_instance_predictions(outputs).get_image()    
         img_model = Image.fromarray(result_model)
-        
         return img, img_model
-    
+
+    def get_outputs_from_file(self,ImgId,imgsize,vis):       
+        pred_boxes = []
+        scores = []
+        pred_classes = []
+        pred_masks = []
+        for i,img in enumerate(self.instance_img_list):
+            if img==ImgId:
+                pred_boxes.append(self.pred_instances[i]['bbox'])
+                scores.append(self.pred_instances[i]['score'])
+                pred_classes.append(int(self.pred_instances[i]['category_id']))
+                #pred_masks_rle.append(self.pred_instances[i]['segmentation'])
+                pred_masks.append(decode(self.pred_instances[i]['segmentation']))
+        BBoxes = detectron2.structures.Boxes(pred_boxes)
+        pred_boxes = detectron2.structures.BoxMode.convert(BBoxes.tensor,from_mode=1,to_mode=0) #0= XYXY, 1 = XYWH
+        inst_dict = dict(pred_boxes = pred_boxes,scores=torch.tensor(scores),pred_classes=torch.tensor(pred_classes),pred_masks = torch.tensor(pred_masks).to(torch.bool))#pred_masks_rle=pred_masks_rle)
+        outputs = detectron2.structures.Instances(imgsize,**inst_dict)
+        return outputs
+
     def output_to_pdf(self,ImgIds,outname,dfimg=None):
-        
+
         def height_crop_range(im,height_target=256):
             yhist = im.sum(axis=1) #integrate over width of image
             mu = np.average(np.arange(yhist.shape[0]),weights = yhist)
@@ -185,7 +223,6 @@ class EvaluateClass(COCOEvaluator):
         self.pr = None
         self.rc = None
         self.fpr = None
-        self.dfimg=None
     def reset(self): 
         super().reset()
         self.mycoco=None
@@ -219,7 +256,7 @@ class EvaluateClass(COCOEvaluator):
                          0] #max detections per image
         self.rc = self.mycoco.params.recThrs
         self.iou = self.mycoco.params.iouThrs
-        self.scores = self.mycoco.eval['scores'][:,:,0,0,0]
+        self.scores = self.mycoco.eval['scores'][:,:,0,0,0] #unreliable if GT has no instances
         p,r = self.get_precision_recall()
         return p,r
 
@@ -247,22 +284,43 @@ class EvaluateClass(COCOEvaluator):
 
     def _calculate_fpr_matrix(self):
         #FP rate, 1 RPD in image = FP
+        if (self.scores.min()==-1) and (self.scores.max()==-1):
+            print('WARNING: Scores for all iou thresholds and all recall levels are not defined. This can arise if ground truth annotations contain no instances. Leaving fpr matrix as None')
+            self.fpr = None
+            return
+
         fpr = np.zeros((len(self.iou),len(self.rc)))
         for i in range(len(self.iou)):
-            for j,s in enumerate(self.scores[i]):
-                ng = 0
-                fp = 0
+            for j,s in enumerate(self.scores[i]): #j -> recall level, s -> corresponding score
+                ng = 0 #number of negative images
+                fp = 0 #number of false positives images
                 for el in self.mycoco.evalImgs:
-                    if el is None:#no predictions
+                    if el is None:#no predictions, no gts
                         ng=ng+1
-                    elif len(el['gtIds'])==0:# some predictions
+                    elif len(el['gtIds'])==0:# some predictions and no gts
                         ng=ng+1
-                        if (np.array(el['dtScores']) >s).sum() > 0:
-                            fp=fp+1
+                        if (np.array(el['dtScores']) >s).sum() > 0: #if at least one score over threshold for recall level
+                            fp=fp+1 #count as FP
                     else:
                         continue
                 fpr[i,j] = fp/ng
         self.fpr = fpr 
+
+    def _calculate_fpr(self):
+        print('Using alternate calculation for fpr at instance score threshold of {}'.format(self.prob_thresh))
+        ng = 0 #number of negative images
+        fp = 0 #number of false positives images
+        for el in self.mycoco.evalImgs:
+            if el is None:#no predictions, no gts
+                ng=ng+1
+            elif len(el['gtIds'])==0:# some predictions and no gts
+                ng=ng+1
+                if (np.array(el['dtScores']) >self.prob_thresh).sum() > 0: #if at least one score over threshold for recall level
+                    fp=fp+1 #count as FP
+            else: #gt has instances
+                continue
+        return fp/(ng+1e-5)
+
     def _find_iou_rc_inds(self):
         try:
             iou_idx = np.argwhere(self.iou==self.iou_thresh)[0][0] #first instance of
@@ -278,10 +336,18 @@ class EvaluateClass(COCOEvaluator):
         return iou_idx,rc_idx
 
     def get_fpr(self):
-        iou_idx,rc_idx = self._find_iou_rc_inds()
+        
         if self.fpr is None:
             self._calculate_fpr_matrix()
-        return self.fpr[iou_idx,rc_idx]
+
+        if self.fpr is not None: 
+            iou_idx,rc_idx = self._find_iou_rc_inds()
+            fpr = self.fpr[iou_idx,rc_idx]
+        elif len(self.mycoco.cocoGt.anns)==0:
+            fpr = self._calculate_fpr()
+        else:
+            fpr=-1
+        return fpr
     
     def summarize_scalars(self): #for pretty printing 
         p,r = self.get_precision_recall()

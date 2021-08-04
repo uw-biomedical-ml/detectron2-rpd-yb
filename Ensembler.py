@@ -53,7 +53,7 @@ class Ensembler():
 
     def mean_score_nms(self):
         winning_list = []
-        print('Computing mean score non-max suppression ensemling for {} images.'.format(len(self.coco_gt.imgs.keys())))
+        print('Computing mean score non-max suppression ensembling for {} images.'.format(len(self.coco_gt.imgs.keys())))
         for img in self.coco_gt.imgs.keys(): 
             #print(img)
             df = pd.DataFrame() #a dataframe of detections
