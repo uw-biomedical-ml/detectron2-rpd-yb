@@ -113,25 +113,27 @@ class OutputVis():
         gt_data = next(item for item in self.data if (item['image_id'] == ImgId))   
         dat = gt_data #gt
         im = cv2.imread(dat['file_name']) #input to model
-        v_gt = Visualizer(im, MetadataCatalog.get(self.dataset_name), scale=3.0)
-        if (self.has_annotations):
+        v_gt = Visualizer(im, MetadataCatalog.get(self.dataset_name), scale=3.0) 
+        if (self.has_annotations): #ground truth boxes and masks
             bboxes = [ddict['bbox'] for ddict in dat['annotations']]
             BBoxes = detectron2.structures.Boxes(bboxes)
             BBoxes = detectron2.structures.BoxMode.convert(BBoxes.tensor,from_mode=1,to_mode=0) #0= XYXY, 1 = XYWH
             segs = [ddict['segmentation'] for ddict in dat['annotations']]
+            #assigned_colors = ['w']*len(segs)
             result_image = v_gt.overlay_instances(boxes=BBoxes,masks=segs).get_image()
         else:
-            result_image = v_gt.output.get_image()
+            result_image = v_gt.output.get_image() #get original image if no annotations
         img = Image.fromarray(result_image)
  
         v_dt = Visualizer(im, MetadataCatalog.get(self.dataset_name), scale=3.0)
         v_dt._default_font_size = 14
 
+        #get predictions from model or file
         if self._mode=='model':
             outputs = self.predictor(im)["instances"].to("cpu")
         elif self._mode=='file':
             outputs = self.get_outputs_from_file(ImgId,(dat['height'],dat['width']),v_dt)  
-        outputs = outputs[outputs.scores>self.prob_thresh] #issues here
+        outputs = outputs[outputs.scores>self.prob_thresh] #apply probability threshold to instances
         result_model = v_dt.draw_instance_predictions(outputs).get_image()    
         img_model = Image.fromarray(result_model)
         return img, img_model
