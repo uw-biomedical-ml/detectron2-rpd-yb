@@ -80,7 +80,7 @@ from detectron2.utils.visualizer import Visualizer
 from detectron2.structures import Instances
 import cv2
 from PIL import Image
-import matplotlib
+#import matplotlib
 #matplotlib.use('agg')
 import matplotlib.pyplot as plt
 plt.style.use('ybpres.mplstyle')
@@ -92,7 +92,7 @@ import sys
 
 class OutputVis():
 
-    def __init__(self,dataset_name,cfg=None,prob_thresh=0.5,pred_mode='model',pred_file=None,has_annotations=True):
+    def __init__(self,dataset_name,cfg=None,prob_thresh=0.5,pred_mode='model',pred_file=None,has_annotations=True, draw_mode = 'default'):
         self.dataset_name = dataset_name
         self.cfg = cfg
         self.prob_thresh = prob_thresh
@@ -108,19 +108,37 @@ class OutputVis():
         else:
             sys.exit('Invalid mode. Only "model" or "file" permitted.')
         self.has_annotations = has_annotations
+        permitted_draw_modes = ['default','bw']
+        if draw_mode not in permitted_draw_modes:
+            sys.exit('draw_mode must be one of the following: {}'.format(permitted_draw_modes))
+        self.draw_mode = draw_mode
 
+    def get_ori_image(self,ImgId):
+        gt_data = next(item for item in self.data if (item['image_id'] == ImgId))   
+        dat = gt_data #gt
+        im = cv2.imread(dat['file_name']) #input to model
+        v_gt = Visualizer(im, MetadataCatalog.get(self.dataset_name), scale=3.0)
+        result_image = v_gt.output.get_image() #get original image
+        img = Image.fromarray(result_image)
+        return img
+               
     def get_image(self,ImgId):
         gt_data = next(item for item in self.data if (item['image_id'] == ImgId))   
         dat = gt_data #gt
         im = cv2.imread(dat['file_name']) #input to model
         v_gt = Visualizer(im, MetadataCatalog.get(self.dataset_name), scale=3.0) 
         if (self.has_annotations): #ground truth boxes and masks
-            bboxes = [ddict['bbox'] for ddict in dat['annotations']]
-            BBoxes = detectron2.structures.Boxes(bboxes)
-            BBoxes = detectron2.structures.BoxMode.convert(BBoxes.tensor,from_mode=1,to_mode=0) #0= XYXY, 1 = XYWH
             segs = [ddict['segmentation'] for ddict in dat['annotations']]
-            #assigned_colors = ['w']*len(segs)
-            result_image = v_gt.overlay_instances(boxes=BBoxes,masks=segs).get_image()
+            if self.draw_mode is 'bw':
+                BBoxes = None
+                assigned_colors = ['r']*len(segs)
+            else: #default behavior
+                bboxes = [ddict['bbox'] for ddict in dat['annotations']]
+                BBoxes = detectron2.structures.Boxes(bboxes)
+                BBoxes = detectron2.structures.BoxMode.convert(BBoxes.tensor,from_mode=1,to_mode=0) #0= XYXY, 1 = XYWH
+                assigned_colors = None
+            
+            result_image = v_gt.overlay_instances(boxes=BBoxes,masks=segs,assigned_colors=assigned_colors, alpha=1.0).get_image()
         else:
             result_image = v_gt.output.get_image() #get original image if no annotations
         img = Image.fromarray(result_image)
@@ -134,7 +152,10 @@ class OutputVis():
         elif self._mode=='file':
             outputs = self.get_outputs_from_file(ImgId,(dat['height'],dat['width']),v_dt)  
         outputs = outputs[outputs.scores>self.prob_thresh] #apply probability threshold to instances
-        result_model = v_dt.draw_instance_predictions(outputs).get_image()    
+        if self.draw_mode is 'bw':
+            result_model = v_dt.overlay_instances(masks=outputs.pred_masks,assigned_colors=['r']*len(outputs), alpha=1.0).get_image()
+        else: #default behavior
+            result_model = v_dt.draw_instance_predictions(outputs).get_image()    
         img_model = Image.fromarray(result_model)
         return img, img_model
 
@@ -156,15 +177,16 @@ class OutputVis():
         outputs = detectron2.structures.Instances(imgsize,**inst_dict)
         return outputs
 
+    @staticmethod
+    def height_crop_range(im,height_target=256):
+        yhist = im.sum(axis=1) #integrate over width of image
+        mu = np.average(np.arange(yhist.shape[0]),weights = yhist)
+        h1 = int(np.floor(mu-height_target/2))
+        h2 = int(np.ceil(mu+height_target/2))
+        return range(h1,h2)
+
     def output_to_pdf(self,ImgIds,outname,dfimg=None):
 
-        def height_crop_range(im,height_target=256):
-            yhist = im.sum(axis=1) #integrate over width of image
-            mu = np.average(np.arange(yhist.shape[0]),weights = yhist)
-            h1 = int(np.floor(mu-height_target/2))
-            h2 = int(np.ceil(mu+height_target/2))
-            return range(h1,h2)
-        
         gtstr = ''
         dtstr = ''
         
@@ -176,7 +198,7 @@ class OutputVis():
             for imgid in tqdm(ImgIds):
                 img, img_model = self.get_image(imgid)
                 #pdb.set_trace()
-                crop_range = height_crop_range(np.array(img.convert('L')),height_target=256*3)
+                crop_range = self.height_crop_range(np.array(img.convert('L')),height_target=256*3)
                 img = np.array(img)[crop_range]
                 img_model = np.array(img_model)[crop_range]
  
@@ -200,8 +222,7 @@ class OutputVis():
 #                 imgpage.save(outname,'PDF',resolution=300,append=True)
 #             else:
 #                 imgpage.save(outname,'PDF',resolution=300)
-            
-                
+                           
 # class EvaluateTemplate(COCOEvaluator):
 #     def __init__(self,dataset_name, output_dir):
 #         super().__init__(dataset_name,tasks={'bbox','segm'},output_dir = output_dir)
