@@ -5,6 +5,7 @@ import torch
 import numpy as np
 import os
 import json
+from tqdm import tqdm
 
 class NpEncoder(json.JSONEncoder):
     def default(self, obj):
@@ -52,9 +53,28 @@ class Ensembler():
         print('Working with {} models, {} categories, and {} images.'.format(self.n_detectors,len(self.cats),len(self.coco_gt.imgs.keys())))
 
     def mean_score_nms(self):
+        def nik_merge(lsts):
+            """Niklas B. https://github.com/rikpg/IntersectionMerge/blob/master/core.py"""
+            sets = [set(lst) for lst in lsts if lst]
+            merged = 1
+            while merged:
+                merged = 0
+                results = []
+                while sets:
+                    common, rest = sets[0], sets[1:]
+                    sets = []
+                    for x in rest:
+                        if x.isdisjoint(common):
+                            sets.append(x)
+                        else:
+                            merged = 1
+                            common |= x
+                    results.append(common)
+                sets = results
+            return sets
         winning_list = []
         print('Computing mean score non-max suppression ensembling for {} images.'.format(len(self.coco_gt.imgs.keys())))
-        for img in self.coco_gt.imgs.keys(): 
+        for img in tqdm(self.coco_gt.imgs.keys()): 
             #print(img)
             df = pd.DataFrame() #a dataframe of detections
             obj_set = set() #a set of objects (frozensets)
@@ -66,7 +86,16 @@ class Ensembler():
                     ts = box_convert(torch.tensor(dfcat['bbox']),in_fmt='xywh',out_fmt='xyxy') #list of tensor boxes for cateogory                  
                     iou_bool = np.array((box_iou(ts,ts)>self.iou_thresh)) #compute IoU matrix and threshold
                     for i in range(len(dfcat)): #for each detection in that category
-                        obj_set.add(frozenset(dfcat.index[iou_bool[i]])) #compute set of sets representing objects
+                        fset = frozenset(dfcat.index[iou_bool[i]])
+                        obj_set.add(fset) #compute set of sets representing objects
+                    #find overlapping sets
+
+                    # for fs in obj_set: #for existing sets
+                    #     if fs&fset: #check for
+                    #         fsnew = fs.union(fset)
+                    #         obj_set.remove(fs)
+                    #         obj_set.add(fsnew)      
+                    obj_set = nik_merge(obj_set)           
                     for s in obj_set:#for each detected objects, find winning box and assign score as mean of scores
                         dfset = dfcat.loc[list(s)]
                         mean_score = dfset['score'].sum()/max(self.n_detectors,len(s)) #allows for more detections than detectors
