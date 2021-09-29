@@ -6,7 +6,6 @@ plt.style.use('ybpres.mplstyle')
 from matplotlib.backends.backend_pdf import PdfPages
 from tqdm import tqdm
 import numpy as np
-import random
 import pandas as pd
 
 
@@ -47,13 +46,15 @@ class GraderExperiment(OutputVis):
                 plt.close(fig)
         return df_answers
 
-def get_balanced_imgids(df,shuffle=True, n=25,rng=None):
+def get_balanced_imgids(df,shuffle=True, n=25,rng=None,exclude_scans = None):
     """Randomly choose 2*n image ids from df such that the number of over-segmented images match the number of under-segmented images.
 
     Args:
         df (pd.DataFrame): RPDPlt.dfimg object. Dataframe to sample from. 
         shuffle (bool, optional): Shuffle image Ids. Defaults to True.
         n (int, optional): Number of samples to take from each side. Defaults to 25.
+        rng (numpy.random.RandomState, optional): random number generator to use
+        exclude_scans (list[str], optional): scan ids to exclude from constructed set
 
     Returns:
         list[str]: list of image ids
@@ -68,7 +69,7 @@ def get_balanced_imgids(df,shuffle=True, n=25,rng=None):
     return imgids.index.values
 
 
-dataset_name = 'val'
+dataset_name = 'test'
 #rng = np.random.default_rng(1234) #newer way 
 rng = np.random.RandomState(2345) #compatable with older/current pandas
 
@@ -86,8 +87,11 @@ pred_file = "output_"+ dataset_name + "/coco_instances_results.json"
 out_file = os.path.join("output_"+ dataset_name,'GraderExperiment_'+dataset_name+'.pdf')
 ans_file = os.path.join("output_"+ dataset_name,'GraderExperiment_'+dataset_name+'GTpanelindex.csv')
 
-df = pd.read_csv(os.path.join("output_"+ dataset_name,'dfimg_val.csv'),index_col=0)
+df = pd.read_csv(os.path.join("output_"+ dataset_name, f'dfimg_{dataset_name}.csv'),index_col=0)
 #ImgIds = np.abs(df.gt_instances-df.dt_instances).sort_values(ascending=False).iloc[0:50].sample(frac=1).index.values
+df_exclude = pd.read_csv('GraderExperiment_scanstoexclude.csv')
+df = df[~df.index.isin(df_exclude.ImgId)]
+
 ImgIds = get_balanced_imgids(df,rng=rng,n=25)
 dfout = df.loc[ImgIds] #images chosen for experiment
 print(dfout.gt_instances - dfout.dt_instances) #looking at instance count balance

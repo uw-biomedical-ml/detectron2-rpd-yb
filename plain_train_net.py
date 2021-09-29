@@ -18,6 +18,7 @@ It also includes fewer abstraction, therefore is easier to add custom logic.
 import logging
 import os
 from collections import OrderedDict
+from fvcore.common.checkpoint import Checkpointer
 import torch
 from torch.nn.parallel import DistributedDataParallel
 from pycocotools.coco import COCO
@@ -62,13 +63,6 @@ warnings.filterwarnings("ignore",category=UserWarning)
 #     yield
 #     sys.stdout = save_stdout
 
-def grab_train():
-    return pickle.load( open( "datasets/train_refined.pk", "rb" ) )
-def grab_valid():
-    return pickle.load( open( "datasets/valid_refined.pk", "rb" ) )
-def grab_test():
-    return pickle.load( open( "datasets/test_refined.pk", "rb" ) )
-
 def grab_dataset(name):
     def f():
         return pickle.load( open( "datasets/"+name+"_refined.pk", "rb" ) )
@@ -89,7 +83,17 @@ import json
 import sys
 
 
-
+def checkSplits(dataset_list):
+    splitdict={}
+    for name in dataset_list:
+        dat = grab_dataset(name)()
+        ptid_set = set([d['image_id'].split('_')[0] for d in dat])
+        splitdict[name] = ptid_set
+    dfcheck = pd.DataFrame(index = splitdict.keys(),columns=splitdict.keys())
+    for key,value in splitdict.items():
+        for key2,value2 in splitdict.items():
+            dfcheck.loc[key,key2]= (len(set.intersection(value,value2)))
+    return dfcheck       
 class OutputVis():
 
     def __init__(self,dataset_name,cfg=None,prob_thresh=0.5,pred_mode='model',pred_file=None,has_annotations=True, draw_mode = 'default'):
@@ -410,7 +414,7 @@ class CreatePlotsRPD():
     
     @classmethod
     def initfromcsv(cls,fname):
-        df = pd.DataFrame.from_csv(fname)
+        df = pd.read_csv(fname)
         return cls(df)
     
             
@@ -438,19 +442,19 @@ class CreatePlotsRPD():
             fpr[i] = ((~gt)&(dt)).sum()/((~gt).sum())
 
         ax[1].plot(inst,pr)
-        ax[1].set_ylim(0.45,1)
+        ax[1].set_ylim(0.45,1.01)
         ax[1].set_xlabel('instance threshold')
         ax[1].set_ylabel('Precision')
 
 
         ax[0].plot(inst,rc)
-        ax[0].set_ylim(0.45,1)
+        ax[0].set_ylim(0.45,1.01)
         ax[0].set_ylabel('Recall')
         ax[0].set_xlabel('instance threshold')
 
 
         ax[2].plot(inst,fpr)
-        ax[2].set_ylim(0,0.06)
+        ax[2].set_ylim(0,0.80)
         ax[2].set_xlabel('instance threshold')
         ax[2].set_ylabel('FPR')
 
@@ -696,6 +700,12 @@ def main(args):
     for name in cfg.DATASETS.TEST:
         DatasetCatalog.register(name,grab_dataset(name))
         MetadataCatalog.get(name).thing_classes = ["rpd"]
+
+    #check split right before running model
+    dfcheck = checkSplits(cfg.DATASETS.TRAIN+cfg.DATASETS.TEST)
+    print(dfcheck)
+    if (dfcheck.values.sum() - np.diag(dfcheck.values).sum())>0:
+        raise ValueError('There are overlapping folds!')
 
     model = build_model(cfg)
     logger.info("Model:\n{}".format(model))

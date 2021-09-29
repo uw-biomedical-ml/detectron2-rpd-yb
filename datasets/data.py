@@ -13,10 +13,46 @@ import matplotlib.pyplot as plt
 from matplotlib.backends.backend_pdf import PdfPages
 import pdb
 
+
+script_dir = os.path.dirname(__file__)
 # rootdir = "/data/amd-data/cera-rpd/cera-rpd-train/data_RPDHimeesh_combined_folds/"
 #rootdir = "/data/amd-data/cera-rpd/cera-rpd-train/data_RPDHimeesh_101001_OS"
-rootdir = "/data/amd-data/cera-rpd/cera-rpd-train/data_RPDHimeesh_val"
-    
+# rootdir = "/data/amd-data/cera-rpd/cera-rpd-train/data_RPDHimeesh_val"
+rootdir = "/data/amd-data/cera-rpd/cera-rpd-train/data_training_val_folds"
+
+class Error(Exception):
+    """Base class for exceptions in this module."""
+    pass
+
+import glob
+import pandas as pd
+def checkSplit2(path):
+    """Check for overlap across folds.
+
+    Args:
+        path (str): Parent director of fold subdirectories. 
+        The fold subdirectories are assumed to have structure ./fold/images/all/ and the name of the file is assumed to start with the group id.
+
+    Returns:
+        df (pd.DataFrame): A dataframe equivalent of the intersection matrix of folds.
+    """
+    dirs = glob.glob(path+'/*/')
+    splitdict = {}
+    for dir in dirs:
+        splitname = dir.strip('/').split('/')[-1]
+        files = os.listdir(dir+'images/all/') 
+        ptids = set([f.split('_')[0] for f in files])
+        splitdict[splitname]=ptids
+    df = pd.DataFrame(index = splitdict.keys(),columns=splitdict.keys())
+    for key,value in splitdict.items():
+        for key2,value2 in splitdict.items():
+            df.loc[key,key2]= (len(set.intersection(value,value2)))
+    return df
+
+def checkHandler(df):
+    if (df.values.sum() - np.diag(df.values).sum())>0:
+        raise Error('There are overlapping folds!')
+
 def findEdgeIndex(df,thbool,idx):
     """Find the first location at which a threshold is met after a given index.
 
@@ -134,7 +170,7 @@ def rpd_data(grp = "train",data_has_ann=True):
     instances = 0
     wrong_poly = 0
     ii=0
-    outname = './'+grp+'_instance_refine_all.pdf'
+    outname = os.path.join(script_dir, grp+'_instance_refine_all.pdf')
     with PdfPages(outname) as pdf:
         for fn in tqdm(glob(f"{rootdir}/{grp}/images/all/*.png")):
             imageid = fn.split("/")[-1]
@@ -190,11 +226,12 @@ def rpd_data(grp = "train",data_has_ann=True):
 
 
 if __name__ == "__main__":
-    #for grp in ("fold1", "fold2", "fold3", "fold4","fold5"):
-     for grp in ("fold1",):
+    dfcheck = checkSplit2(rootdir)
+    checkHandler(dfcheck)
+    for grp in ("fold1", "fold2", "fold3", "fold4","fold5","test"):
         print(grp)
         data = rpd_data(grp=grp,data_has_ann=True)
-        #pickle.dump(data, open(f"{grp}_refined.pk", "wb"))
-        pickle.dump(data, open(f"val_refined.pk", "wb"))
+        pickle.dump(data, open(os.path.join(script_dir,f"{grp}_refined.pk"), "wb"))
+        #pickle.dump(data, open(f"val_refined.pk", "wb"))
 
 
