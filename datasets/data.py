@@ -23,9 +23,9 @@ script_dir = os.path.dirname(__file__)
 # rootdir = "/data/amd-data/cera-rpd/cera-rpd-train/data_RPDHimeesh_val"
 #rootdir = "/data/amd-data/cera-rpd/cera-rpd-train/data_training_val_folds"
 
-rpath='/data/amd-data/cera-rpd' #root path for files
-dirtoextract = rpath +'/Test' #extracted from 
-filedir = rpath +'/Test_extracted' #split from
+rpath='/data/ssong/rpd_data' #root path for files
+dirtoextract = rpath +'/dummy_set' #extracted from 
+filedir = rpath +'/dummy_set_extracted' #split from
 
 class Error(Exception):
     """Base class for exceptions in this module."""
@@ -41,7 +41,7 @@ def inithval_list():
             'red': [255, 0, 0],
             'black': [0,0,0],
             'white': [255,255,255],
-            'gray' : [7, 7, 7]
+            'quy' : [7, 7, 7]
             
             }
     
@@ -436,12 +436,12 @@ def rpd_data(df, grp = "train",data_has_ann=True):
 
 
 # if __name__ == "__main__":
-#     dfcheck = checkSplit2(rootdir)
-#     checkHandler(dfcheck)
-#     for grp in ("fold1", "fold2", "fold3", "fold4","fold5","test"):
-#         print(grp)
-#         data = rpd_data(grp=grp,data_has_ann=True)
-#         pickle.dump(data, open(os.path.join(script_dir,f"{grp}_refined.pk"), "wb"))
-#         #pickle.dump(data, open(f"val_refined.pk", "wb"))
+    dfcheck = checkSplit2(rootdir)
+    checkHandler(dfcheck)
+    for grp in ("Fold 1"):
+        print(grp)
+        data = rpd_data(grp=grp,data_has_ann=True)
+        pickle.dump(data, open(os.path.join(script_dir,f"{grp}_refined.pk"), "wb"))
+        #pickle.dump(data, open(f"val_refined.pk", "wb"))
 
 
