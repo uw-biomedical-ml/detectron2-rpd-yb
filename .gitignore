@@ -3,3 +3,9 @@ msk_extracted/
 extracted_test/
 Fold 1_instance_refine_all.pdf
 Fold 1_refined.pk
+datasets/Fold 1_instance_refine_all.pdf
+datasets/Fold 1_refined.pk
+extracted_test_overlays/
+msk_extracted_overlays/
+instances_mask_overlays/
+msk_instances_overlays/

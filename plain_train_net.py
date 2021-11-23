@@ -233,8 +233,37 @@ class OutputVis():
             result_model = v_dt.overlay_instances(masks=outputs.pred_masks,assigned_colors=['w']*len(outputs), alpha=1.0).get_image()
             pil_model = Image.fromarray(result_model)
             imgs.append(pil_model)
-        imgs[0].save("extracted_test/" + str(ptid) + "_" + str(eye) + ".tif", tags = "test", compression = "tiff_deflate", save_all=True, append_images=imgs[1:])
-            
+        imgs[0].save("extracted_test/" + str(ptid) + "_" + str(eye) + "-bmasks.tif", tags = "test", compression = "tiff_deflate", save_all=True, append_images=imgs[1:])
+    
+    def output_overlay_masks_to_tiff(self, ImgIds, ptid, eye):
+        imgs = []
+        for index in range(len(ImgIds)):
+            gt_data = next(item for item in self.data if (item['image_id'] == ImgIds[index]))   
+            dat = gt_data
+            im = cv2.imread(dat['file_name']) #input to model
+            v_dt = Visualizer(im, MetadataCatalog.get(self.dataset_name), scale=3.0)
+            v_dt._default_font_size = 14
+            outputs = self.get_outputs_from_file(ImgIds[index],(dat['height'],dat['width']),v_dt)
+            outputs = outputs[outputs.scores>self.prob_thresh]
+            result_model = v_dt.overlay_instances(masks=outputs.pred_masks,assigned_colors=['r']*len(outputs), alpha=1.0).get_image()
+            pil_model = Image.fromarray(result_model)
+            imgs.append(pil_model)
+        imgs[0].save("extracted_test_overlays/" + str(ptid) + "_" + str(eye) + "-bmasks_overlay.tif", tags = "test", compression = "tiff_deflate", save_all=True, append_images=imgs[1:])
+    
+    def output_instances_masks_to_tiff(self, ImgIds, ptid, eye):
+        imgs = []
+        for index in range(len(ImgIds)):
+            gt_data = next(item for item in self.data if (item['image_id'] == ImgIds[index]))   
+            dat = gt_data
+            im = cv2.imread(dat['file_name']) #input to model
+            v_dt = Visualizer(im, MetadataCatalog.get(self.dataset_name), scale=3.0)
+            v_dt._default_font_size = 14
+            outputs = self.get_outputs_from_file(ImgIds[index],(dat['height'],dat['width']),v_dt)
+            outputs = outputs[outputs.scores>self.prob_thresh]
+            result_model = v_dt.draw_instance_predictions(outputs).get_image()
+            pil_model = Image.fromarray(result_model)
+            imgs.append(pil_model)
+        imgs[0].save("instances_mask_overlays/" + str(ptid) + "_" + str(eye) + "-ipmasks_overlay.tif", tags = "test", compression = "tiff_deflate", save_all=True, append_images=imgs[1:])
 #             imgpage = Image.fromarray(np.concatenate((img,img_model),axis=0))
 #             if os.path.exists(outname):
 #                 imgpage.save(outname,'PDF',resolution=300,append=True)
