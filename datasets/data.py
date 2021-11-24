@@ -6,7 +6,7 @@ import numpy as np
 import os,sys
 import cv2
 from PIL import Image,ImageOps,ImageFilter,ImageSequence
-from volReader import volFile
+from .volReader import volFile
 from detectron2.structures import BoxMode
 from tqdm import tqdm
 import pickle
@@ -14,7 +14,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_pdf import PdfPages
 import pdb
-from yb_split_optimizers import getSplitkfold
+from .yb_split_optimizers import getSplitkfold
 
 
 script_dir = os.path.dirname(__file__)

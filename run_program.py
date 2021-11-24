@@ -2,7 +2,6 @@ import datasets.data as data
 import plain_train_net as net
 import pickle
 import matplotlib.pyplot as plt
-import numpy as np
 from detectron2.config import get_cfg
 from plain_train_net import grab_dataset
 import detectron2.utils.comm as comm
