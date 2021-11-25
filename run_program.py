@@ -34,8 +34,7 @@ def process_input(has_annotations=False): # Processes input .vol files and creat
     data.dirtoextract = data.rpath +'/Test' #extracted from, should be changed to user input
     data.filedir = data.rpath +'/Test_extracted' #split from, should be changed to user input
     data.extractFiles(masks_exist = has_annotations)
-    df = data.createDf()
-    df.assign(fold = dataset_name) #temporary
+    df = data.createDf().assign(fold = dataset_name) #temporary
     df_p = data.process_masks(df, mode = 'binary', binary_classes=2)
     stored_data = data.rpd_data(df_p, grp = dataset_name, data_has_ann = has_annotations) #temp handling of grp
     pickle.dump(stored_data, open(os.path.join(data.script_dir,f"{dataset_name}_refined.pk"), "wb")) #temp handling of grp
@@ -62,7 +61,7 @@ def run_prediction(cfg,dataset_name):
         myeval.reset()
         output_dir = "output_"+ dataset_name + "/"+mdl
         myeval._output_dir = output_dir
-        #print("running inference on ", mdl)
+        print("Running inference with model ", mdl)
         results_i = inference_on_dataset(model, myloader, myeval) #produces coco_instance_results.json when myeval.evaluate is called
     print("Done with predictions!")
     return
