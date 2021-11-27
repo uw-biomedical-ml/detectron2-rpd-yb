@@ -14,3 +14,4 @@ msk_instances_overlays/
 *.html
 *.json
 output_Test Set/
+*.csv
