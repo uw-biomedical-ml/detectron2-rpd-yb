@@ -27,6 +27,8 @@ dataset_name = "Test Set"
 dpi= 120
 dataset_table = None
 cfg = None
+myeval = None
+ens = None
 
 
 def process_input(has_annotations=False): # Processes input .vol files and creates the pk file.
@@ -43,6 +45,8 @@ def configure_model():
     global cfg
     cfg = get_cfg()
     cfg.merge_from_file('configs/working.yaml')
+
+def register_dataset():
     for name in [dataset_name]:
         try:
             DatasetCatalog.register(name, grab_dataset(name))
@@ -57,67 +61,78 @@ def run_prediction(cfg,dataset_name):
     for mdl in ("fold1", "fold2", "fold3", "fold4","fold5"):
         model_weights_path = "/data/amd-data/cera-rpd/detectron2-rpd/output_valid_"+ mdl +"/model_final.pth"
         DetectionCheckpointer(model).load(model_weights_path);  # load a file, usually from cfg.MODEL.WEIGHTS
-        model.eval(); #set model in evaluation mode
+        model.eval() #set model in evaluation mode
         myeval.reset()
         output_dir = "output_"+ dataset_name + "/"+mdl
         myeval._output_dir = output_dir
         print("Running inference with model ", mdl)
         results_i = inference_on_dataset(model, myloader, myeval) #produces coco_instance_results.json when myeval.evaluate is called
     print("Done with predictions!")
-    return
 
 def run_ensemble():
+    global ens
     ens = Ensembler('output_'+dataset_name,dataset_name,["fold1", "fold2", "fold3", "fold4","fold5"],.2)
     ens.mean_score_nms()
     ens.save_coco_instances()
 
-def evaluate_ensemble():
+def evaluate_dataset():
+    global myeval
     myeval = EvaluateClass(dataset_name, "output_"+ dataset_name, iou_thresh = .2, prob_thresh=0.5,evalsuper=False)
     myeval.evaluate()
-    #print(myeval.summarize_scalars())
     with open(os.path.join("output_"+ dataset_name,'scalar_dict.json'),"w") as outfile:
         json.dump(obj=myeval.summarize_scalars(),fp=outfile)
+
+def create_table():
     global dataset_table 
     dataset_table = CreatePlotsRPD.initfromcoco(myeval.mycoco,myeval.prob_thresh)
 
 def create_binary_masks_tif():
     pred_file = "output_"+ dataset_name + "/coco_instances_results.json"
     dfimg_dummy = dataset_table.dfimg.sort_index()
-    df_unique = dfimg_dummy.iloc[::49, :]
-    vis = OutputVis(dataset_name,prob_thresh = 0.5,pred_mode='file',pred_file=pred_file,has_annotations=has_annotations)
-    for scan in range(len(df_unique.index)):
-        ImgIds = dfimg_dummy.head(49).index.values
-        vis.output_masks_to_tiff(ImgIds, dfimg_dummy.loc[ImgIds[0],"ptid"], dfimg_dummy.loc[ImgIds[0], "eye"])
-        dfimg_dummy = dfimg_dummy.iloc[49:]
-        if dfimg_dummy.empty:
-            #print('DataFrame is empty!')
-            break
+    df_unique = dfimg_dummy.ptid.unique()
+    vis = OutputVis(dataset_name,prob_thresh = 0.5,pred_mode='file',pred_file=pred_file,has_annotations=True)
+    for scan in range(len(df_unique)):
+        df_currentpt = dfimg_dummy.loc[dfimg_dummy['ptid'] == df_unique[scan]]
+        df_pt_OD = df_currentpt.loc[df_currentpt['eye'] == 'OD']
+        df_pt_OS = df_currentpt.loc[df_currentpt['eye'] == 'OS']
+        df_pt_OD_ids = df_pt_OD.index.values
+        df_pt_OS_ids = df_pt_OS.index.values
+        if (len(df_pt_OD.index) > 0):
+            vis.output_masks_to_tiff(df_pt_OD_ids, df_unique[scan], 'OD')
+        if (len(df_pt_OS.index) > 0):
+            vis.output_masks_to_tiff(df_pt_OS_ids, df_unique[scan], 'OS')
 
 def create_binary_masks_overlay_tif():
     pred_file = "output_"+ dataset_name + "/coco_instances_results.json"
     dfimg_dummy = dataset_table.dfimg.sort_index()
-    df_unique = dfimg_dummy.iloc[::49, :]
-    vis = OutputVis(dataset_name,prob_thresh = 0.5,pred_mode='file',pred_file=pred_file,has_annotations=has_annotations)
-    for scan in range(len(df_unique.index)):
-        ImgIds = dfimg_dummy.head(49).index.values
-        vis.output_overlay_masks_to_tiff(ImgIds, dfimg_dummy.loc[ImgIds[0],"ptid"], dfimg_dummy.loc[ImgIds[0], "eye"])
-        dfimg_dummy = dfimg_dummy.iloc[49:]
-        if dfimg_dummy.empty:
-            #print('DataFrame is empty!')
-            break
+    df_unique = dfimg_dummy.ptid.unique()
+    vis = OutputVis(dataset_name,prob_thresh = 0.5,pred_mode='file',pred_file=pred_file,has_annotations=True)
+    for scan in range(len(df_unique)):
+        df_currentpt = dfimg_dummy.loc[dfimg_dummy['ptid'] == df_unique[scan]]
+        df_pt_OD = df_currentpt.loc[df_currentpt['eye'] == 'OD']
+        df_pt_OS = df_currentpt.loc[df_currentpt['eye'] == 'OS']
+        df_pt_OD_ids = df_pt_OD.index.values
+        df_pt_OS_ids = df_pt_OS.index.values
+        if (len(df_pt_OD.index) > 0):
+            vis.output_overlay_masks_to_tiff(df_pt_OD_ids, df_unique[scan], 'OD')
+        if (len(df_pt_OS.index) > 0):
+            vis.output_overlay_masks_to_tiff(df_pt_OS_ids, df_unique[scan], 'OS')
 
 def create_instance_masks_overlay_tif():
     pred_file = "output_"+ dataset_name + "/coco_instances_results.json"
     dfimg_dummy = dataset_table.dfimg.sort_index()
-    df_unique = dfimg_dummy.iloc[::49, :]
-    vis = OutputVis(dataset_name,prob_thresh = 0.5,pred_mode='file',pred_file=pred_file,has_annotations=has_annotations)
-    for scan in range(len(df_unique.index)):
-        ImgIds = dfimg_dummy.head(49).index.values
-        vis.output_instances_masks_to_tiff(ImgIds, dfimg_dummy.loc[ImgIds[0],"ptid"], dfimg_dummy.loc[ImgIds[0], "eye"])
-        dfimg_dummy = dfimg_dummy.iloc[49:]
-        if dfimg_dummy.empty:
-            #print('DataFrame is empty!')
-            break
+    df_unique = dfimg_dummy.ptid.unique()
+    vis = OutputVis(dataset_name,prob_thresh = 0.5,pred_mode='file',pred_file=pred_file,has_annotations=True)
+    for scan in range(len(df_unique)):
+        df_currentpt = dfimg_dummy.loc[dfimg_dummy['ptid'] == df_unique[scan]]
+        df_pt_OD = df_currentpt.loc[df_currentpt['eye'] == 'OD']
+        df_pt_OS = df_currentpt.loc[df_currentpt['eye'] == 'OS']
+        df_pt_OD_ids = df_pt_OD.index.values
+        df_pt_OS_ids = df_pt_OS.index.values
+        if (len(df_pt_OD.index) > 0):
+            vis.output_instances_masks_to_tiff(df_pt_OD_ids, df_unique[scan], 'OD')
+        if (len(df_pt_OS.index) > 0):
+            vis.output_instances_masks_to_tiff(df_pt_OS_ids, df_unique[scan], 'OS')
 def main():
     global has_annotations
     has_annotations = False
@@ -126,12 +141,16 @@ def main():
     process_input(has_annotations = has_annotations)
     print("Configuring model...")
     configure_model()
+    print("Registering dataset...")
+    register_dataset()
     print("Running inference...")
     run_prediction(cfg,dataset_name)
     print("Running ensemble...")
     run_ensemble()
-    print("Evaluating ensemble...")
-    evaluate_ensemble()
+    print("Evaluating dataset...")
+    evaluate_dataset()
+    print("Creating dataset table...")
+    create_table()
     print("Creating binary masks tif (no overlay)...")
     create_binary_masks_tif()
     print("Creating binary masks tif (with overlay)...")
