@@ -133,6 +133,37 @@ def create_instance_masks_overlay_tif():
             vis.output_instances_masks_to_tiff(df_pt_OD_ids, df_unique[scan], 'OD')
         if (len(df_pt_OS.index) > 0):
             vis.output_instances_masks_to_tiff(df_pt_OS_ids, df_unique[scan], 'OS')
+
+def create_tif_output(mode = None):
+    pred_file = "output_"+ dataset_name + "/coco_instances_results.json"
+    dfimg_dummy = dataset_table.dfimg.sort_index()
+    df_unique = dfimg_dummy.ptid.unique()
+    vis = OutputVis(dataset_name,prob_thresh = 0.5,pred_mode='file',pred_file=pred_file,has_annotations=True)
+    for scan in range(len(df_unique)):
+        df_currentpt = dfimg_dummy.loc[dfimg_dummy['ptid'] == df_unique[scan]]
+        df_pt_OD = df_currentpt.loc[df_currentpt['eye'] == 'OD']
+        df_pt_OS = df_currentpt.loc[df_currentpt['eye'] == 'OS']
+        df_pt_OD_ids = df_pt_OD.index.values
+        df_pt_OS_ids = df_pt_OS.index.values
+        if (len(df_pt_OD.index) > 0):
+            if (mode == 'bm'):
+                vis.output_masks_to_tiff(df_pt_OD_ids, df_unique[scan], 'OD')
+            elif (mode == 'bm-o'):
+                vis.output_overlay_masks_to_tiff(df_pt_OD_ids, df_unique[scan], 'OD')
+            elif (mode == 'im'):
+                vis.output_instances_masks_to_tiff(df_pt_OD_ids, df_unique[scan], 'OD')
+            else:
+                print("No output mode selected!")
+        if (len(df_pt_OS.index) > 0):
+            if (mode == 'bm'):
+                vis.output_masks_to_tiff(df_pt_OS_ids, df_unique[scan], 'OS')
+            elif (mode == 'bm-o'):
+                vis.output_overlay_masks_to_tiff(df_pt_OS_ids, df_unique[scan], 'OS')
+            elif (mode == 'im'):
+                vis.output_instances_masks_to_tiff(df_pt_OS_ids, df_unique[scan], 'OS')
+            else:
+                print("No output mode selected!")
+
 def main():
     global has_annotations
     has_annotations = False
