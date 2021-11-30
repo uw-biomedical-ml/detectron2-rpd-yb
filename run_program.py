@@ -19,6 +19,8 @@ from detectron2.utils.visualizer import Visualizer
 import json
 import os
 import sys
+from table_styles import styles
+
 os.environ["CUDA_DEVICE_ORDER"]="PCI_BUS_ID"
 os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 
@@ -83,7 +85,9 @@ def evaluate_dataset():
         json.dump(obj=myeval.summarize_scalars(),fp=outfile)
 
 def create_table():
-    global dataset_table 
+    if (myeval == None):
+        evaluate_dataset()
+    global dataset_table
     dataset_table = CreatePlotsRPD.initfromcoco(myeval.mycoco,myeval.prob_thresh)
 
 def create_binary_masks_tif():
@@ -163,6 +167,23 @@ def create_tif_output(mode = None):
                 vis.output_instances_masks_to_tiff(df_pt_OS_ids, df_unique[scan], 'OS')
             else:
                 print("No output mode selected!")
+def create_dfpts():
+    if (dataset_table == None):
+        create_table()
+    dfpts = dataset_table.dfpts.sort_values(by=['dt_instances'],ascending=False)
+    html_str = dfpts.style.format('{:.0f}').set_table_styles(styles).render()
+    html_file = open(os.path.join('output_'+ dataset_name + '/dfpts_'+dataset_name+'.html'),'w')
+    html_file.write(html_str)
+    html_file.close()
+
+def create_dfimg():
+    if (dataset_table == None):
+        create_table()
+    dfimg = dataset_table.dfimg.sort_index()
+    html_str = dfimg.style.set_table_styles(styles).render()
+    html_file = open(os.path.join('output_'+ dataset_name + '/dfimg_'+dataset_name+'.html'),'w')
+    html_file.write(html_str)
+    html_file.close()
 
 def main():
     global has_annotations
@@ -188,6 +209,8 @@ def main():
     create_binary_masks_overlay_tif()
     print("Creating instances masks tif (with overlay)...")
     create_instance_masks_overlay_tif()
+    # create_dfpts()
+    # create_dfimg()
     print("Done!")
 
 if __name__ == "__main__":
