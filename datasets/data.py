@@ -180,14 +180,14 @@ def createDfTest():
     val_list,p_list = inithval_list() 
     df = pd.DataFrame(columns=['ptid','eye','scan','img_path','msk_path','yellow','white','red','black'])
     filelist = glob.glob(os.path.join(filedir,'*.jpeg'),recursive=True)
-    #print(filelist)
     for i,line in enumerate(tqdm(filelist)):
-        fpath = line.strip('\n')
+        fpath = line.strip('\n').replace('\\','/')
         # pdb.set_trace()
         #print(fpath)
         path, scan_str = fpath.strip('.jpeg').rsplit('/',1)
+        #print(scan_str)
         # mskfile = path + '/' + scan_str.replace('oct','msk') +'.png'
-        data = scan_str.rsplit('-',1)[0]+['OD']+scan_str.rsplit('-',1)[1]+[fpath]+['']
+        data = [scan_str.rsplit('-',1)[0]]+['OD']+[scan_str.rsplit('-',1)[1]]+[fpath]+['']
 
         # # read image
         # if os.path.exists(mskfile):
@@ -202,7 +202,8 @@ def createDfTest():
         # else:
         #     msk = msk.convert('RGB')    
         cnt_arr = [0.0,0.0,0.0,0.0]
-        df.loc[i] = data + list(cnt_arr)
+        df.loc[i] = data + cnt_arr
+        #print(data + cnt_arr)
     #save data frame
     df.to_csv(filedir + '/dataframe.csv',index=False)
     return df
@@ -233,7 +234,7 @@ def process_masks(df,mode='RGB',binary_classes = 2):
 
     #check the split from the directories
     dfcheck = checkSplit2(df)
-    print(dfcheck)
+    # print(dfcheck)
     if (dfcheck.values.sum() - np.diag(dfcheck.values).sum())>0:
         raise Error('There are overlapping folds!')
     
@@ -416,8 +417,8 @@ def rpd_data(df, grp = "train",data_has_ann=True):
         #for fn in tqdm(glob(f"{rootdir}/{grp}/images/all/*.png")):
             imageid = fn.split("/")[-1]
             #segfn = fn.replace("/images/", "/masks/").replace("_oct", "_msk")
-            if not os.path.isfile(segfn):
-                print(fn)
+            # if not os.path.isfile(segfn):
+            #     print(fn)
             im = cv2.imread(fn)
             seg = cv2.imread(segfn)
             dat = dict(file_name = fn, height = im.shape[0], width = im.shape[1], image_id = imageid)

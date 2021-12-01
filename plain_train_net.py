@@ -433,7 +433,7 @@ class CreatePlotsRPD():
     @classmethod
     def initfromcoco(cls,mycoco,prob_thresh):
         df = pd.DataFrame(index = mycoco.cocoGt.imgs.keys(), columns=['gt_instances','gt_pxs','gt_xpxs','dt_instances','dt_pxs','dt_xpxs'],dtype=np.uint64)
-
+        print(mycoco.cocoGt.imgs.keys())
         for key,val in mycoco.cocoGt.imgs.items():
             imgid = val['id']
             #Gt instances
@@ -450,8 +450,8 @@ class CreatePlotsRPD():
                 
             dat = [len(instGt),np.array(instGt).sum(),np.array(xprojGt).sum(),len(instDt),np.array(instDt).sum(),np.array(xprojDt).sum()]
             df.loc[key] = dat
-            
-        newdf = pd.DataFrame([idx.strip('.png').split('_') for idx in df.index],columns=['ptid','eye','scan'],index = df.index)
+        newdf = pd.DataFrame([idx.strip('.jpeg').split('-') for idx in df.index]+['OD'],columns=['ptid','scan','eye'],index = df.index)
+        # newdf = pd.DataFrame([idx.strip('.png').split('_') for idx in df.index],columns=['ptid','eye','scan'],index = df.index)
         df = df.merge(newdf,how='inner',left_index=True,right_index=True)
         return cls(df)
     
