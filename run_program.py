@@ -199,7 +199,7 @@ def main():
     parser.add_argument('--ptid', action ='store_true', help='Output a dataset html indexed by patient ids.')
     parser.add_argument('--imgid', action ='store_true', help='Output a dataset html indexed by image ids.')
     args = parser.parse_args()
-    print(args)
+    #print(args)
     global has_annotations
     global dataset_name
     has_annotations = args.mask

@@ -52,7 +52,7 @@ def inithval_list():
 def extractFiles(masks_exist=True):
     files_to_extract = glob.glob(os.path.join(dirtoextract,'*.vol'),recursive=True)
     for i,line in enumerate(tqdm(files_to_extract)):
-        fpath = line.strip('\n')
+        fpath = line.strip('\n').replace('\\','/')
         path, scan_str = fpath.strip('.vol').rsplit('/',1)
         extractpath = path + '_extracted/'+scan_str
         os.makedirs(extractpath,exist_ok=True)
@@ -150,7 +150,7 @@ def createDf():
     df = pd.DataFrame(columns=['ptid','eye','scan','img_path','msk_path','yellow','white','red','black'])
     filelist = glob.glob(os.path.join(filedir,'*/*oct*.png'),recursive=True)
     for i,line in enumerate(tqdm(filelist)):
-        fpath = line.strip('\n')
+        fpath = line.strip('\n').replace('\\','/')
         # pdb.set_trace()
         path, scan_str = fpath.strip('.png').rsplit('/',1)
         mskfile = path + '/' + scan_str.replace('oct','msk') +'.png'
