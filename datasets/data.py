@@ -175,6 +175,38 @@ def createDf():
     df.to_csv(filedir + '/dataframe.csv',index=False)
     return df
 
+def createDfTest():
+    '''Create dataframe of images contained in filelist. Include colored pixel count.'''
+    val_list,p_list = inithval_list() 
+    df = pd.DataFrame(columns=['ptid','eye','scan','img_path','msk_path','yellow','white','red','black'])
+    filelist = glob.glob(os.path.join(filedir,'*.jpeg'),recursive=True)
+    #print(filelist)
+    for i,line in enumerate(tqdm(filelist)):
+        fpath = line.strip('\n')
+        # pdb.set_trace()
+        #print(fpath)
+        path, scan_str = fpath.strip('.jpeg').rsplit('/',1)
+        # mskfile = path + '/' + scan_str.replace('oct','msk') +'.png'
+        data = scan_str.rsplit('-',1)[0]+['OD']+scan_str.rsplit('-',1)[1]+[fpath]+['']
+
+        # # read image
+        # if os.path.exists(mskfile):
+        #     msk= Image.open(mskfile)
+        # else:
+        #     print('Error: {} not found!'.format(mskfile))
+        #     sys.exit()
+            
+        # if (msk.mode !='RGBA' and msk.mode != 'RGB' and msk.mode != 'P'):
+        #     print('Error: image mask {} is mode {}, not RGB or RGBA.'.format(mskfile,msk.mode))
+        #     sys.exit()
+        # else:
+        #     msk = msk.convert('RGB')    
+        cnt_arr = [0.0,0.0,0.0,0.0]
+        df.loc[i] = data + list(cnt_arr)
+    #save data frame
+    df.to_csv(filedir + '/dataframe.csv',index=False)
+    return df
+
 def process_masks(df,mode='RGB',binary_classes = 2):
     '''
     Generates processed masks according to mode.
