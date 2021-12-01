@@ -25,7 +25,7 @@ os.environ["CUDA_DEVICE_ORDER"]="PCI_BUS_ID"
 os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 
 has_annotations = False
-dataset_name = "Fold 1"
+dataset_name = "Test Set"
 dpi= 120
 dataset_table = None
 cfg = None
@@ -34,12 +34,12 @@ ens = None
 
 
 def process_input(has_annotations=False): # Processes input .vol files and creates the pk file.
-    # data.rpath='/data/ssong/rpd_data' #root path for files, should be changed to user input
-    # data.dirtoextract = data.rpath +'/Test' #extracted from, should be changed to user input
-    # data.filedir = data.rpath +'/Test_extracted' #split from, should be changed to user input
-    # data.extractFiles(masks_exist = has_annotations)
-    df_p = data.createDfTest().assign(fold = dataset_name) #temporary
-    # df_p = data.process_masks(df, mode = 'binary', binary_classes=2)
+    data.rpath='/data/ssong/rpd_data' #root path for files, should be changed to user input
+    data.dirtoextract = data.rpath +'/Test' #extracted from, should be changed to user input
+    data.filedir = data.rpath +'/Test_extracted' #split from, should be changed to user input
+    data.extractFiles(masks_exist = has_annotations)
+    df = data.createDf().assign(fold = dataset_name) #temporary
+    df_p = data.process_masks(df, mode = 'binary', binary_classes=2)
     stored_data = data.rpd_data(df_p, grp = dataset_name, data_has_ann = has_annotations) #temp handling of grp
     pickle.dump(stored_data, open(os.path.join(data.script_dir,f"{dataset_name}_refined.pk"), "wb")) #temp handling of grp
 
@@ -61,8 +61,7 @@ def run_prediction(cfg,dataset_name):
     myloader = build_detection_test_loader(cfg,dataset_name) 
     myeval = COCOEvaluator(dataset_name,tasks={'bbox','segm'},output_dir ="output_"+ dataset_name) #produces _coco_format.json when initialized
     for mdl in ("fold1", "fold2", "fold3", "fold4","fold5"):
-        # model_weights_path = "/data/amd-data/cera-rpd/detectron2-rpd/output_valid_"+ mdl +"/model_final.pth"
-        model_weights_path = 'C:/Users/scott/Desktop/Lee Lab Research' + "/models/"+ mdl +"/model_final.pth"
+        model_weights_path = "/data/amd-data/cera-rpd/detectron2-rpd/output_valid_"+ mdl +"/model_final.pth"
         DetectionCheckpointer(model).load(model_weights_path);  # load a file, usually from cfg.MODEL.WEIGHTS
         model.eval() #set model in evaluation mode
         myeval.reset()
