@@ -97,7 +97,7 @@ def create_binary_masks_tif():
     pred_file = "output_"+ dataset_name + "/coco_instances_results.json"
     dfimg_dummy = dataset_table.dfimg
     df_unique = dfimg_dummy.ptid.unique()
-    vis = OutputVis(dataset_name,prob_thresh = 0.5,pred_mode='file',pred_file=pred_file,has_annotations=True)
+    vis = OutputVis(dataset_name,prob_thresh = 0.5,pred_mode='file',pred_file=pred_file,has_annotations=has_annotations)
     for scan in range(len(df_unique)):
         df_currentpt = dfimg_dummy.loc[dfimg_dummy['ptid'] == df_unique[scan]]
         df_pt_OD = df_currentpt.loc[df_currentpt['eye'] == 'OD'].sort_values('scan', kind = 'mergesort')
@@ -113,7 +113,7 @@ def create_binary_masks_overlay_tif():
     pred_file = "output_"+ dataset_name + "/coco_instances_results.json"
     dfimg_dummy = dataset_table.dfimg
     df_unique = dfimg_dummy.ptid.unique()
-    vis = OutputVis(dataset_name,prob_thresh = 0.5,pred_mode='file',pred_file=pred_file,has_annotations=True)
+    vis = OutputVis(dataset_name,prob_thresh = 0.5,pred_mode='file',pred_file=pred_file,has_annotations=has_annotations)
     for scan in range(len(df_unique)):
         df_currentpt = dfimg_dummy.loc[dfimg_dummy['ptid'] == df_unique[scan]]
         df_pt_OD = df_currentpt.loc[df_currentpt['eye'] == 'OD'].sort_values('scan', kind = 'mergesort')
@@ -129,7 +129,7 @@ def create_instance_masks_overlay_tif():
     pred_file = "output_"+ dataset_name + "/coco_instances_results.json"
     dfimg_dummy = dataset_table.dfimg
     df_unique = dfimg_dummy.ptid.unique()
-    vis = OutputVis(dataset_name,prob_thresh = 0.5,pred_mode='file',pred_file=pred_file,has_annotations=True)
+    vis = OutputVis(dataset_name,prob_thresh = 0.5,pred_mode='file',pred_file=pred_file,has_annotations=has_annotations)
     for scan in range(len(df_unique)):
         df_currentpt = dfimg_dummy.loc[dfimg_dummy['ptid'] == df_unique[scan]]
         df_pt_OD = df_currentpt.loc[df_currentpt['eye'] == 'OD'].sort_values('scan', kind = 'mergesort')
@@ -145,7 +145,7 @@ def create_tif_output(mode = None):
     pred_file = "output_"+ dataset_name + "/coco_instances_results.json"
     dfimg_dummy = dataset_table.dfimg
     df_unique = dfimg_dummy.ptid.unique()
-    vis = OutputVis(dataset_name,prob_thresh = 0.5,pred_mode='file',pred_file=pred_file,has_annotations=True)
+    vis = OutputVis(dataset_name,prob_thresh = 0.5,pred_mode='file',pred_file=pred_file,has_annotations=has_annotations)
     for scan in range(len(df_unique)):
         df_currentpt = dfimg_dummy.loc[dfimg_dummy['ptid'] == df_unique[scan]]
         df_pt_OD = df_currentpt.loc[df_currentpt['eye'] == 'OD'].sort_values('scan', kind = 'mergesort')
