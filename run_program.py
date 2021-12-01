@@ -169,7 +169,7 @@ def create_tif_output(mode = None):
             elif (mode == 'bm-o'):
                 vis.output_overlay_masks_to_tiff(df_pt_OS_ids, df_unique[scan], 'OS')
             elif (mode == 'im'):
-                vis.output_instances_masks_to_tiff(df_ptpb_OS_ids, df_unique[scan], 'OS')
+                vis.output_instances_masks_to_tiff(df_pt_OS_ids, df_unique[scan], 'OS')
             else:
                 print("No output mode selected!")
 def create_dfpts():
