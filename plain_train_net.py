@@ -233,7 +233,10 @@ class OutputVis():
             result_model = v_dt.overlay_instances(masks=outputs.pred_masks,assigned_colors=['w']*len(outputs), alpha=1.0).get_image()
             pil_model = Image.fromarray(result_model)
             imgs.append(pil_model)
-        imgs[0].save("extracted_test/" + str(ptid) + "_" + str(eye) + "-bmasks.tif", tags = "test", compression = "tiff_deflate", save_all=True, append_images=imgs[1:])
+        if len(imgs) > 1:
+            imgs[0].save("extracted_test/" + str(ptid) + "_" + str(eye) + "-bmasks.tif", tags = "test", compression = "tiff_deflate", save_all=True, append_images=imgs[1:])
+        else:
+            imgs[0].save("extracted_test/" + str(ptid) + "_" + str(eye) + "-bmasks.png")
     
     def output_overlay_masks_to_tiff(self, ImgIds, ptid, eye):
         imgs = []
@@ -248,8 +251,11 @@ class OutputVis():
             result_model = v_dt.overlay_instances(masks=outputs.pred_masks,assigned_colors=['r']*len(outputs), alpha=1.0).get_image()
             pil_model = Image.fromarray(result_model)
             imgs.append(pil_model)
-        imgs[0].save("extracted_test_overlays/" + str(ptid) + "_" + str(eye) + "-bmasks_overlay.tif", tags = "test", compression = "tiff_deflate", save_all=True, append_images=imgs[1:])
-    
+        if len(imgs) > 1:
+            imgs[0].save("extracted_test_overlays/" + str(ptid) + "_" + str(eye) + "-bmasks_overlay.tif", tags = "test", compression = "tiff_deflate", save_all=True, append_images=imgs[1:])
+        else:
+            imgs[0].save("extracted_test_overlays/" + str(ptid) + "_" + str(eye) + "-bmasks_overlay.png")
+
     def output_instances_masks_to_tiff(self, ImgIds, ptid, eye):
         imgs = []
         for index in range(len(ImgIds)):
@@ -263,7 +269,10 @@ class OutputVis():
             result_model = v_dt.draw_instance_predictions(outputs).get_image()
             pil_model = Image.fromarray(result_model)
             imgs.append(pil_model)
-        imgs[0].save("instances_mask_overlays/" + str(ptid) + "_" + str(eye) + "-ipmasks_overlay.tif", tags = "test", compression = "tiff_deflate", save_all=True, append_images=imgs[1:])
+        if len(imgs) > 1:
+            imgs[0].save("instances_mask_overlays/" + str(ptid) + "_" + str(eye) + "-ipmasks_overlay.tif", tags = "test", compression = "tiff_deflate", save_all=True, append_images=imgs[1:])
+        else:
+            imgs[0].save("instances_mask_overlays/" + str(ptid) + "_" + str(eye) + "-ipmasks_overlay.png")
 #             imgpage = Image.fromarray(np.concatenate((img,img_model),axis=0))
 #             if os.path.exists(outname):
 #                 imgpage.save(outname,'PDF',resolution=300,append=True)
