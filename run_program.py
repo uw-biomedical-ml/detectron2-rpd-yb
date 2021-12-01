@@ -20,6 +20,7 @@ import json
 import os
 import sys
 from table_styles import styles
+import pdb
 
 os.environ["CUDA_DEVICE_ORDER"]="PCI_BUS_ID"
 os.environ["CUDA_VISIBLE_DEVICES"] = "0"
@@ -90,16 +91,18 @@ def create_table():
         evaluate_dataset()
     global dataset_table
     dataset_table = CreatePlotsRPD.initfromcoco(myeval.mycoco,myeval.prob_thresh)
-
+    dataset_table.dfimg.sort_index(inplace=True)
+    dataset_table.dfimg['scan'] = dataset_table.dfimg['scan'].astype('int')
+    
 def create_binary_masks_tif():
     pred_file = "output_"+ dataset_name + "/coco_instances_results.json"
-    dfimg_dummy = dataset_table.dfimg.sort_index()
+    dfimg_dummy = dataset_table.dfimg
     df_unique = dfimg_dummy.ptid.unique()
     vis = OutputVis(dataset_name,prob_thresh = 0.5,pred_mode='file',pred_file=pred_file,has_annotations=True)
     for scan in range(len(df_unique)):
         df_currentpt = dfimg_dummy.loc[dfimg_dummy['ptid'] == df_unique[scan]]
-        df_pt_OD = df_currentpt.loc[df_currentpt['eye'] == 'OD']
-        df_pt_OS = df_currentpt.loc[df_currentpt['eye'] == 'OS']
+        df_pt_OD = df_currentpt.loc[df_currentpt['eye'] == 'OD'].sort_values('scan', kind = 'mergesort')
+        df_pt_OS = df_currentpt.loc[df_currentpt['eye'] == 'OS'].sort_values('scan', kind = 'mergesort')
         df_pt_OD_ids = df_pt_OD.index.values
         df_pt_OS_ids = df_pt_OS.index.values
         if (len(df_pt_OD.index) > 0):
@@ -109,13 +112,13 @@ def create_binary_masks_tif():
 
 def create_binary_masks_overlay_tif():
     pred_file = "output_"+ dataset_name + "/coco_instances_results.json"
-    dfimg_dummy = dataset_table.dfimg.sort_index()
+    dfimg_dummy = dataset_table.dfimg
     df_unique = dfimg_dummy.ptid.unique()
     vis = OutputVis(dataset_name,prob_thresh = 0.5,pred_mode='file',pred_file=pred_file,has_annotations=True)
     for scan in range(len(df_unique)):
         df_currentpt = dfimg_dummy.loc[dfimg_dummy['ptid'] == df_unique[scan]]
-        df_pt_OD = df_currentpt.loc[df_currentpt['eye'] == 'OD']
-        df_pt_OS = df_currentpt.loc[df_currentpt['eye'] == 'OS']
+        df_pt_OD = df_currentpt.loc[df_currentpt['eye'] == 'OD'].sort_values('scan', kind = 'mergesort')
+        df_pt_OS = df_currentpt.loc[df_currentpt['eye'] == 'OS'].sort_values('scan', kind = 'mergesort')
         df_pt_OD_ids = df_pt_OD.index.values
         df_pt_OS_ids = df_pt_OS.index.values
         if (len(df_pt_OD.index) > 0):
@@ -125,13 +128,13 @@ def create_binary_masks_overlay_tif():
 
 def create_instance_masks_overlay_tif():
     pred_file = "output_"+ dataset_name + "/coco_instances_results.json"
-    dfimg_dummy = dataset_table.dfimg.sort_index()
+    dfimg_dummy = dataset_table.dfimg
     df_unique = dfimg_dummy.ptid.unique()
     vis = OutputVis(dataset_name,prob_thresh = 0.5,pred_mode='file',pred_file=pred_file,has_annotations=True)
     for scan in range(len(df_unique)):
         df_currentpt = dfimg_dummy.loc[dfimg_dummy['ptid'] == df_unique[scan]]
-        df_pt_OD = df_currentpt.loc[df_currentpt['eye'] == 'OD']
-        df_pt_OS = df_currentpt.loc[df_currentpt['eye'] == 'OS']
+        df_pt_OD = df_currentpt.loc[df_currentpt['eye'] == 'OD'].sort_values('scan', kind = 'mergesort')
+        df_pt_OS = df_currentpt.loc[df_currentpt['eye'] == 'OS'].sort_values('scan', kind = 'mergesort')
         df_pt_OD_ids = df_pt_OD.index.values
         df_pt_OS_ids = df_pt_OS.index.values
         if (len(df_pt_OD.index) > 0):
@@ -141,13 +144,14 @@ def create_instance_masks_overlay_tif():
 
 def create_tif_output(mode = None):
     pred_file = "output_"+ dataset_name + "/coco_instances_results.json"
-    dfimg_dummy = dataset_table.dfimg.sort_index()
+    dfimg_dummy = dataset_table.dfimg
+    #print(dfimg_dummy)
     df_unique = dfimg_dummy.ptid.unique()
     vis = OutputVis(dataset_name,prob_thresh = 0.5,pred_mode='file',pred_file=pred_file,has_annotations=True)
     for scan in range(len(df_unique)):
         df_currentpt = dfimg_dummy.loc[dfimg_dummy['ptid'] == df_unique[scan]]
-        df_pt_OD = df_currentpt.loc[df_currentpt['eye'] == 'OD']
-        df_pt_OS = df_currentpt.loc[df_currentpt['eye'] == 'OS']
+        df_pt_OD = df_currentpt.loc[df_currentpt['eye'] == 'OD'].sort_values('scan', kind = 'mergesort')
+        df_pt_OS = df_currentpt.loc[df_currentpt['eye'] == 'OS'].sort_values('scan', kind = 'mergesort')
         df_pt_OD_ids = df_pt_OD.index.values
         df_pt_OS_ids = df_pt_OS.index.values
         if (len(df_pt_OD.index) > 0):
@@ -165,7 +169,7 @@ def create_tif_output(mode = None):
             elif (mode == 'bm-o'):
                 vis.output_overlay_masks_to_tiff(df_pt_OS_ids, df_unique[scan], 'OS')
             elif (mode == 'im'):
-                vis.output_instances_masks_to_tiff(df_pt_OS_ids, df_unique[scan], 'OS')
+                vis.output_instances_masks_to_tiff(df_ptpb_OS_ids, df_unique[scan], 'OS')
             else:
                 print("No output mode selected!")
 def create_dfpts():
