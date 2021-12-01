@@ -20,12 +20,13 @@ import json
 import os
 import sys
 from table_styles import styles
+import argparse
 
 os.environ["CUDA_DEVICE_ORDER"]="PCI_BUS_ID"
 os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 
 has_annotations = False
-dataset_name = "Test Set"
+dataset_name = None
 dpi= 120
 dataset_table = None
 cfg = None
@@ -34,9 +35,9 @@ ens = None
 
 
 def process_input(has_annotations=False): # Processes input .vol files and creates the pk file.
-    data.rpath='/data/ssong/rpd_data' #root path for files, should be changed to user input
-    data.dirtoextract = data.rpath +'/Test' #extracted from, should be changed to user input
-    data.filedir = data.rpath +'/Test_extracted' #split from, should be changed to user input
+    # data.rpath='/data/ssong/rpd_data' #root path for files
+    # data.dirtoextract = data.rpath +'/Test' #extracted from
+    # data.filedir = data.rpath +'/Test_extracted' #split from
     data.extractFiles(masks_exist = has_annotations)
     df = data.createDf().assign(fold = dataset_name) #temporary
     df_p = data.process_masks(df, mode = 'binary', binary_classes=2)
@@ -186,8 +187,26 @@ def create_dfimg():
     html_file.close()
 
 def main():
+    parser = argparse.ArgumentParser(description='Run the detectron2 pipeline.')
+    parser.add_argument('root', metavar = 'P', help='The path of the folder containing your data folder and the extraction folder.')
+    parser.add_argument('data', metavar = 'D', help='The path of the data folder containing your .vol files.')
+    parser.add_argument('extracted', metavar = 'E', help='The path of the extraction folder that will contain your extracted files.')
+    parser.add_argument('name', metavar = 'N', help='The name of your dataset.')
+    parser.add_argument('--mask', action ='store_true', help= 'If your data comes with annotations or masks.')
+    parser.add_argument('--bm', action ='store_true', help='Output binary mask tif files.')
+    parser.add_argument('--bmo', action ='store_true', help='Output binary mask overlay tif files.')
+    parser.add_argument('--im', action ='store_true', help='Output instance mask overlay tif files.')
+    parser.add_argument('--ptid', action ='store_true', help='Output a dataset html indexed by patient ids.')
+    parser.add_argument('--imgid', action ='store_true', help='Output a dataset html indexed by image ids.')
+    args = parser.parse_args()
+    print(args)
     global has_annotations
-    has_annotations = False
+    global dataset_name
+    has_annotations = args.mask
+    dataset_name = args.name
+    data.rpath= args.root #root path for files
+    data.dirtoextract = args.data #extracted from
+    data.filedir = args.extracted #split from
     print("Has annotations: ", has_annotations)
     print("Processing input...")
     process_input(has_annotations = has_annotations)
@@ -203,14 +222,19 @@ def main():
     evaluate_dataset()
     print("Creating dataset table...")
     create_table()
-    print("Creating binary masks tif (no overlay)...")
-    create_tif_output(mode = 'bm')
-    print("Creating binary masks tif (with overlay)...")
-    create_tif_output(mode = 'bm-o')
-    print("Creating instances masks tif (with overlay)...")
-    create_tif_output(mode = 'im')
-    # create_dfpts()
-    # create_dfimg()
+    if args.bm:
+        print("Creating binary masks tif (no overlay)...")
+        create_tif_output(mode = 'bm')
+    if args.bmo:
+        print("Creating binary masks tif (with overlay)...")
+        create_tif_output(mode = 'bm-o')
+    if args.im:
+        print("Creating instances masks tif (with overlay)...")
+        create_tif_output(mode = 'im')
+    if args.ptid:
+        create_dfpts()
+    if args.imgid:
+        create_dfimg()
     print("Done!")
 
 if __name__ == "__main__":
