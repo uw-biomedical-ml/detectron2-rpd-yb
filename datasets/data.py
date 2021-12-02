@@ -23,9 +23,15 @@ script_dir = os.path.dirname(__file__)
 # rootdir = "/data/amd-data/cera-rpd/cera-rpd-train/data_RPDHimeesh_val"
 #rootdir = "/data/amd-data/cera-rpd/cera-rpd-train/data_training_val_folds"
 
-rpath='/data/ssong/rpd_data' #root path for files
-dirtoextract = rpath +'/dummy_set' #extracted from 
-filedir = rpath +'/dummy_set_extracted' #split from
+# rpath='/data/ssong/rpd_data' #root path for files
+# dirtoextract = rpath +'/dummy_set' #extracted from 
+# filedir = rpath +'/dummy_set_extracted' #split from
+
+rpath=None
+dirtoextract=None
+filedir=None
+inputcsv=None
+df_input=None
 
 class Error(Exception):
     """Base class for exceptions in this module."""
@@ -48,6 +54,24 @@ def inithval_list():
     hval_list = [cmap['yellow'],cmap['white'],cmap['red'],cmap['black']] #mapping
     p_list = [1.0, 0.8, 0.5, 0]
     return hval_list,p_list
+
+def import_csv():
+    global df_input
+    df_input = pd.read_csv(inputcsv)
+
+def rename_vol():
+    global dirtoextract
+    global filedir
+    if df_input is None:
+        import_csv()
+    for row in df_input.itertuples():
+        old_path = row.path #.replace('\\','/')
+        path_root = row.path.replace('\\','/').rsplit('/',1)[0]
+        if dirtoextract is None:
+            dirtoextract = path_root
+            filedir = path_root+'_extracted'
+        new_path = path_root + '/' + str(row.ptid) + '_' + row.eye + '.vol'
+        os.rename(old_path, new_path)
 
 def extractFiles(masks_exist=True):
     files_to_extract = glob.glob(os.path.join(dirtoextract,'*.vol'),recursive=True)
@@ -72,6 +96,8 @@ def extractFiles(masks_exist=True):
             page = Image.new('RGB',(1024,496)) #default black image
             for i in range(vol.oct.shape[0]):
                 page.save(extractpath+'/'+scan_str+'_msk-{:03d}.png'.format(i))
+
+
 
 def countColors(msk,hval_list):
     '''For PIL RGB image msk, return the number of pixels of each color specified in in hval_list.'''

@@ -35,9 +35,8 @@ ens = None
 
 
 def process_input(has_annotations=False): # Processes input .vol files and creates the pk file.
-    # data.rpath='/data/ssong/rpd_data' #root path for files
-    # data.dirtoextract = data.rpath +'/Test' #extracted from
-    # data.filedir = data.rpath +'/Test_extracted' #split from
+    data.import_csv()
+    data.rename_vol()
     data.extractFiles(masks_exist = has_annotations)
     df = data.createDf().assign(fold = dataset_name) #temporary
     df_p = data.process_masks(df, mode = 'binary', binary_classes=2)
@@ -190,10 +189,11 @@ def create_dfimg():
 
 def main():
     parser = argparse.ArgumentParser(description='Run the detectron2 pipeline.')
-    parser.add_argument('root', metavar = 'P', help='The path of the folder containing your data folder and the extraction folder.')
-    parser.add_argument('data', metavar = 'D', help='The path of the data folder containing your .vol files.')
-    parser.add_argument('extracted', metavar = 'E', help='The path of the extraction folder that will contain your extracted files.')
+    # parser.add_argument('root', metavar = 'P', help='The path of the folder containing your data folder and the extraction folder.')
+    # parser.add_argument('data', metavar = 'D', help='The path of the data folder containing your .vol files.')
+    # parser.add_argument('extracted', metavar = 'E', help='The path of the extraction folder that will contain your extracted files.')
     parser.add_argument('name', metavar = 'N', help='The name of your dataset.')
+    parser.add_argument('path', metavar = 'P', help='The path to the input dataset .csv file.'  )
     parser.add_argument('--mask', action ='store_true', help= 'If your data comes with annotations or masks.')
     parser.add_argument('--bm', action ='store_true', help='Output binary mask tif files.')
     parser.add_argument('--bmo', action ='store_true', help='Output binary mask overlay tif files.')
@@ -201,14 +201,17 @@ def main():
     parser.add_argument('--ptid', action ='store_true', help='Output a dataset html indexed by patient ids.')
     parser.add_argument('--imgid', action ='store_true', help='Output a dataset html indexed by image ids.')
     args = parser.parse_args()
-    #print(args)
     global has_annotations
     global dataset_name
     has_annotations = args.mask
     dataset_name = args.name
-    data.rpath= args.root #root path for files
-    data.dirtoextract = args.data #extracted from
-    data.filedir = args.extracted #split from
+    data.inputcsv = args.path #args.csv
+    # data.rpath= args.root #root path for files
+    # data.dirtoextract = args.data #extracted from
+    # data.filedir = args.extracted #split from
+    # print("after")
+    # print("dirtoextract:",data.dirtoextract)
+    # print("filedir:",data.filedir)
     print("Has annotations: ", has_annotations)
     print("Processing input...")
     process_input(has_annotations = has_annotations)
