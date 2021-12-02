@@ -193,7 +193,7 @@ def main():
     # parser.add_argument('data', metavar = 'D', help='The path of the data folder containing your .vol files.')
     # parser.add_argument('extracted', metavar = 'E', help='The path of the extraction folder that will contain your extracted files.')
     parser.add_argument('name', metavar = 'N', help='The name of your dataset.')
-    parser.add_argument('path', metavar = 'P', help='The path to the input dataset .csv file.'  )
+    parser.add_argument('csv', metavar = 'P', help='The path to the input dataset .csv file.'  )
     parser.add_argument('--mask', action ='store_true', help= 'If your data comes with annotations or masks.')
     parser.add_argument('--bm', action ='store_true', help='Output binary mask tif files.')
     parser.add_argument('--bmo', action ='store_true', help='Output binary mask overlay tif files.')
@@ -205,7 +205,7 @@ def main():
     global dataset_name
     has_annotations = args.mask
     dataset_name = args.name
-    data.inputcsv = args.path #args.csv
+    data.inputcsv = args.csv
     # data.rpath= args.root #root path for files
     # data.dirtoextract = args.data #extracted from
     # data.filedir = args.extracted #split from
