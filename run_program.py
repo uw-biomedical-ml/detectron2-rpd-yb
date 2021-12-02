@@ -40,8 +40,8 @@ def process_input(has_annotations=False): # Processes input .vol files and creat
     data.extractFiles(masks_exist = has_annotations)
     df = data.createDf().assign(fold = dataset_name) #temporary
     df_p = data.process_masks(df, mode = 'binary', binary_classes=2)
-    stored_data = data.rpd_data(df_p, grp = dataset_name, data_has_ann = has_annotations) #temp handling of grp
-    pickle.dump(stored_data, open(os.path.join(data.script_dir,f"{dataset_name}_refined.pk"), "wb")) #temp handling of grp
+    stored_data = data.rpd_data(df_p, grp = dataset_name, data_has_ann = has_annotations)
+    pickle.dump(stored_data, open(os.path.join(data.script_dir,f"{dataset_name}_refined.pk"), "wb"))
 
 def configure_model():
     global cfg
