@@ -227,7 +227,6 @@ def main():
     evaluate_dataset()
     print("Creating dataset table...")
     create_table()
-    print("here")
     if args.bm:
         print("Creating binary masks tif (no overlay)...")
         create_tif_output(mode = 'bm')

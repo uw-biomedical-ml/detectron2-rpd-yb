@@ -265,7 +265,6 @@ class OutputVis():
         for index in range(len(ImgIds)):
             gt_data = next(item for item in self.data if (item['image_id'] == ImgIds[index]))   
             dat = gt_data
-            print(dat['file_name'])
             im = cv2.imread(dat['file_name']) #input to model
             v_dt = Visualizer(im, MetadataCatalog.get(self.dataset_name), scale=3.0)
             v_dt._default_font_size = 14
