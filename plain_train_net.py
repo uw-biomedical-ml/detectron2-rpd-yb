@@ -125,10 +125,12 @@ class OutputVis():
         result_image = v_gt.output.get_image() #get original image
         img = Image.fromarray(result_image)
         return img
-               
+    def get_gt_image_data(self,ImgId):
+        gt_data = next(item for item in self.data if (item['image_id'] == ImgId))
+        return gt_data           
     def get_image(self,ImgId):
-        gt_data = next(item for item in self.data if (item['image_id'] == ImgId))   
-        dat = gt_data #gt
+        #gt_data = next(item for item in self.data if (item['image_id'] == ImgId))   
+        dat = self.get_gt_image_data(ImgId) #gt
         im = cv2.imread(dat['file_name']) #input to model
         v_gt = Visualizer(im, MetadataCatalog.get(self.dataset_name), scale=3.0) 
         if (self.has_annotations): #ground truth boxes and masks
@@ -154,7 +156,7 @@ class OutputVis():
         if self._mode=='model':
             outputs = self.predictor(im)["instances"].to("cpu")
         elif self._mode=='file':
-            outputs = self.get_outputs_from_file(ImgId,(dat['height'],dat['width']),v_dt)  
+            outputs = self.get_outputs_from_file(ImgId,(dat['height'],dat['width']))  
         outputs = outputs[outputs.scores>self.prob_thresh] #apply probability threshold to instances
         if self.draw_mode is 'bw':
             result_model = v_dt.overlay_instances(masks=outputs.pred_masks,assigned_colors=['r']*len(outputs), alpha=1.0).get_image()
@@ -163,7 +165,25 @@ class OutputVis():
         img_model = Image.fromarray(result_model)
         return img, img_model
 
-    def get_outputs_from_file(self,ImgId,imgsize,vis):       
+    # def get_outputs_from_file(self,ImgId,imgsize):       
+    #     pred_boxes = []
+    #     scores = []
+    #     pred_classes = []
+    #     pred_masks = []
+    #     for i,img in enumerate(self.instance_img_list):
+    #         if img==ImgId:
+    #             pred_boxes.append(self.pred_instances[i]['bbox'])
+    #             scores.append(self.pred_instances[i]['score'])
+    #             pred_classes.append(int(self.pred_instances[i]['category_id']))
+    #             #pred_masks_rle.append(self.pred_instances[i]['segmentation'])
+    #             pred_masks.append(decode(self.pred_instances[i]['segmentation']))
+    #     BBoxes = detectron2.structures.Boxes(pred_boxes)
+    #     pred_boxes = detectron2.structures.BoxMode.convert(BBoxes.tensor,from_mode=1,to_mode=0) #0= XYXY, 1 = XYWH
+    #     inst_dict = dict(pred_boxes = pred_boxes,scores=torch.tensor(scores),pred_classes=torch.tensor(pred_classes),pred_masks = torch.tensor(pred_masks).to(torch.bool))#pred_masks_rle=pred_masks_rle)
+    #     outputs = detectron2.structures.Instances(imgsize,**inst_dict)
+    #     return outputs
+    
+    def get_outputs_from_file(self,ImgId,imgsize):       
         pred_boxes = []
         scores = []
         pred_classes = []
@@ -177,7 +197,7 @@ class OutputVis():
                 pred_masks.append(decode(self.pred_instances[i]['segmentation']))
         BBoxes = detectron2.structures.Boxes(pred_boxes)
         pred_boxes = detectron2.structures.BoxMode.convert(BBoxes.tensor,from_mode=1,to_mode=0) #0= XYXY, 1 = XYWH
-        inst_dict = dict(pred_boxes = pred_boxes,scores=torch.tensor(scores),pred_classes=torch.tensor(pred_classes),pred_masks = torch.tensor(pred_masks).to(torch.bool))#pred_masks_rle=pred_masks_rle)
+        inst_dict = dict(pred_boxes = pred_boxes,scores=torch.tensor(np.array(scores)),pred_classes=torch.tensor(np.array(pred_classes)),pred_masks = torch.tensor(np.array(pred_masks)).to(torch.bool))#pred_masks_rle=pred_masks_rle)
         outputs = detectron2.structures.Instances(imgsize,**inst_dict)
         return outputs
 
@@ -228,11 +248,13 @@ class OutputVis():
             blank = Image.new('RGB',(dat['width'],dat['height'])) #default black image
             v_dt = Visualizer(blank, MetadataCatalog.get(self.dataset_name), scale=3.0)
             v_dt._default_font_size = 14
-            outputs = self.get_outputs_from_file(ImgIds[index],(dat['height'],dat['width']),v_dt)
+            outputs = self.get_outputs_from_file(ImgIds[index],(dat['height'],dat['width']))
             outputs = outputs[outputs.scores>self.prob_thresh]
             result_model = v_dt.overlay_instances(masks=outputs.pred_masks,assigned_colors=['w']*len(outputs), alpha=1.0).get_image()
             pil_model = Image.fromarray(result_model)
             imgs.append(pil_model)
+        if not os.path.isdir('extracted_test'):
+            os.mkdir('extracted_test')
         if len(imgs) > 1:
             imgs[0].save("extracted_test/" + str(ptid) + "_" + str(eye) + "-bmasks.tif", tags = "test", compression = "tiff_deflate", save_all=True, append_images=imgs[1:])
         else:
@@ -243,14 +265,17 @@ class OutputVis():
         for index in range(len(ImgIds)):
             gt_data = next(item for item in self.data if (item['image_id'] == ImgIds[index]))   
             dat = gt_data
+            print(dat['file_name'])
             im = cv2.imread(dat['file_name']) #input to model
             v_dt = Visualizer(im, MetadataCatalog.get(self.dataset_name), scale=3.0)
             v_dt._default_font_size = 14
-            outputs = self.get_outputs_from_file(ImgIds[index],(dat['height'],dat['width']),v_dt)
+            outputs = self.get_outputs_from_file(ImgIds[index],(dat['height'],dat['width']))
             outputs = outputs[outputs.scores>self.prob_thresh]
             result_model = v_dt.overlay_instances(masks=outputs.pred_masks,assigned_colors=['r']*len(outputs), alpha=1.0).get_image()
             pil_model = Image.fromarray(result_model)
             imgs.append(pil_model)
+        if not os.path.isdir('extracted_test_overlays'):
+            os.mkdir('extracted_test_overlays')
         if len(imgs) > 1:
             imgs[0].save("extracted_test_overlays/" + str(ptid) + "_" + str(eye) + "-bmasks_overlay.tif", tags = "test", compression = "tiff_deflate", save_all=True, append_images=imgs[1:])
         else:
@@ -264,11 +289,13 @@ class OutputVis():
             im = cv2.imread(dat['file_name']) #input to model
             v_dt = Visualizer(im, MetadataCatalog.get(self.dataset_name), scale=3.0)
             v_dt._default_font_size = 14
-            outputs = self.get_outputs_from_file(ImgIds[index],(dat['height'],dat['width']),v_dt)
+            outputs = self.get_outputs_from_file(ImgIds[index],(dat['height'],dat['width']))
             outputs = outputs[outputs.scores>self.prob_thresh]
             result_model = v_dt.draw_instance_predictions(outputs).get_image()
             pil_model = Image.fromarray(result_model)
             imgs.append(pil_model)
+        if not os.path.isdir('instances_mask_overlays'):
+            os.mkdir('instances_mask_overlays')
         if len(imgs) > 1:
             imgs[0].save("instances_mask_overlays/" + str(ptid) + "_" + str(eye) + "-ipmasks_overlay.tif", tags = "test", compression = "tiff_deflate", save_all=True, append_images=imgs[1:])
         else:
