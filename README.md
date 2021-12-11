@@ -1,6 +1,5 @@
 Setting up Detectron2-RPD
  
-
 Step 1) Install C++ Build Tools
 
 Prior to starting the installation process, make sure to save any important files. In order to finish the installation, a restart is required.
@@ -21,28 +20,14 @@ Tick the box labelled "Desktop development with C++". Your installer should now 
 
 ![image](https://user-images.githubusercontent.com/46503967/145657439-e145402a-dc26-4279-8705-1a2834fba5f4.png)
 
-Press Install. 
+Press Install. After the installation is finished, restart your PC to finalize the installation.
 
-```
-conda install python=3.7
-conda install pytorch==1.7.1 torchvision==0.8.2 torchaudio==0.7.2 cudatoolkit=10.2 opencv -c pytorch
+Step 2) Install Miniconda with Detectron 2
 
-python -m pip install detectron2 -f https://dl.fbaipublicfiles.com/detectron2/wheels/cu102/torch1.7/index.html
-pip install tqdm
-```
+To install miniconda with detectron2, run "conda_install.bat".
 
-First set up datasets
-```
-cd datasets
-./data.py
-```
+![image](https://user-images.githubusercontent.com/46503967/145657820-33a85b39-a157-47d9-934d-22ebea3e2913.png)
 
-Then train:
-```
-./run.sh
-```
+Running Detectron2-RPD
 
-Then run inference on test images:
-```
-./test.sh
-```
+To run the model, run "run_program.bat"
