@@ -1,4 +1,27 @@
-Setup Detectron env
+Setting up Detectron2-RPD
+ 
+
+Step 1) Install C++ Build Tools
+
+Prior to starting the installation process, make sure to save any important files. In order to finish the installation, a restart is required.
+
+Run "vs_BuildTools.exe"
+
+![image](https://user-images.githubusercontent.com/46503967/145657344-e8cf16ae-2ae4-4baf-a9f4-2637251c42eb.png)
+
+After a couple of seconds, the following window should pop up:
+
+![image](https://user-images.githubusercontent.com/46503967/145657320-eb1907d6-dcff-45ee-b1e8-a8f4d1b01e3e.png)
+
+Press Continue.
+
+![image](https://user-images.githubusercontent.com/46503967/145657130-10c828ef-679b-4f5d-98af-00a91e26ba81.png)
+
+Tick the box labelled "Desktop development with C++". Your installer should now look like so:
+
+![image](https://user-images.githubusercontent.com/46503967/145657439-e145402a-dc26-4279-8705-1a2834fba5f4.png)
+
+Press Install. 
 
 ```
 conda install python=3.7
