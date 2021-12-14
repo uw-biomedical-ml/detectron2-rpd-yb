@@ -307,13 +307,15 @@ class EvaluateClass(COCOEvaluator):
         p,r = self.get_precision_recall()
         return p,r
 
-    def plot_PRcurve(self):
+    def plot_PRcurve(self,ax=None):
+        if ax==None:
+            fig, ax = plt.subplots(1,1)
         for i in range(len(self.iou)):
-            plt.plot(self.rc,self.pr[i],label = '{:.2}'.format(self.iou[i]))
-        plt.xlabel('Recall')
-        plt.ylabel('Precision')
-        plt.title('')
-        plt.legend(title='IoU')
+            ax.plot(self.rc,self.pr[i],label = '{:.2}'.format(self.iou[i]))
+        ax.set_xlabel('Recall')
+        ax.set_ylabel('Precision')
+        ax.set_title('')
+        ax.legend(title='IoU')
         
     def plot_recall_vs_prob(self):
         plt.figure()
@@ -402,6 +404,7 @@ class EvaluateClass(COCOEvaluator):
         dd = dict(dataset = self.dataset_name, precision = float(p),recall=float(r),fpr=float(fpr),iou=self.iou_thresh,probability=self.prob_thresh)
         return dd
 
+from sklearn.metrics import precision_recall_curve,average_precision_score
 class CreatePlotsRPD():
     def __init__(self,dfimg):
         self.dfimg = dfimg
@@ -446,7 +449,23 @@ class CreatePlotsRPD():
 #         print('Max xpxs:',max_xpxs)
 #         print('Max pxs:',max_pxs)
         return max_inst,max_xpxs,max_pxs
-        
+
+    def eye_level_prc(self,df,gt_thresh=5,ax=None):
+
+        prc = precision_recall_curve(df.gt_instances>=gt_thresh,df.dt_instances)
+        if ax==None:
+            fig,ax = plt.subplots(1,1)
+        ax.plot(prc[1],prc[0])
+        ax.set_xlabel('RPD Eye Recall')
+        ax.set_ylabel('RPD Eye Precision')
+        fig2,ax2 = plt.subplots(1,1)
+        ax2.plot(prc[1][:-1],prc[2])
+        ax2.set_ylabel('RPD Instance Threshold')
+        ax2.set_xlabel('RPD Eye Recall')
+
+        ap = average_precision_score(df.gt_instances>=gt_thresh,df.dt_instances)
+        return ap,prc
+
     def plot_img_level_instance_thresholding(self,df,inst):
 
         rc = np.zeros((len(inst),))
@@ -481,13 +500,49 @@ class CreatePlotsRPD():
         plt.tight_layout()
         return pr,rc,fpr
 
-    def gt_vs_dt_instances(self):
+    def plot_img_level_instance_thresholding2(self,df,inst,gt_thresh):
+
+        rc = np.zeros((len(inst),))
+        pr = np.zeros((len(inst),))
+        fpr = np.zeros((len(inst),))
+
+        fig, ax = plt.subplots(1,3,figsize = [15,5])
+        for i,dt_thresh in enumerate(inst):
+            gt = df.gt_instances>=gt_thresh
+            dt = df.dt_instances>=dt_thresh
+            rc[i] = (gt&dt).sum()/gt.sum()
+            pr[i] = (gt&dt).sum()/dt.sum()
+            fpr[i] = ((~gt)&(dt)).sum()/((~gt).sum())
+
+        ax[1].plot(inst,pr)
+        ax[1].set_ylim(0.45,1.01)
+        ax[1].set_xlabel('instance threshold')
+        ax[1].set_ylabel('Precision')
+
+
+        ax[0].plot(inst,rc)
+        ax[0].set_ylim(0.45,1.01)
+        ax[0].set_ylabel('Recall')
+        ax[0].set_xlabel('instance threshold')
+
+
+        ax[2].plot(inst,fpr)
+        ax[2].set_ylim(0,0.80)
+        ax[2].set_xlabel('instance threshold')
+        ax[2].set_ylabel('FPR')
+
+        plt.tight_layout()
+        return pr,rc,fpr
+
+    def gt_vs_dt_instances(self,ax=None):
         df = self.dfimg
         max_inst,max_xpxs,max_pxs = self.get_max_limits(df)
         idx = (df.gt_instances>0)&(df.dt_instances>0)
         
-        fig = plt.figure(dpi=100)
-        ax = fig.add_subplot(111)
+        if ax==None:
+            fig = plt.figure(dpi=100)
+            ax = fig.add_subplot(111)
+
         y = df[idx].groupby('gt_instances')['dt_instances'].mean()
         yerr = df[idx].groupby('gt_instances')['dt_instances'].std()
         ax.errorbar(y.index,y.values,yerr.values,fmt='*')
@@ -498,7 +553,7 @@ class CreatePlotsRPD():
         plt.xlabel('gt_instances')
         plt.ylabel('dt_instances')
         plt.tight_layout()
-        return fig
+        return ax
         
     def gt_vs_dt_xpxs(self):
         df = self.dfimg
