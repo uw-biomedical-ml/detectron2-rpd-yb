@@ -35,8 +35,9 @@ ens = None
 
 
 def process_input(has_annotations=False): # Processes input .vol files and creates the pk file.
-    # data.import_csv()
+    data.import_csv()
     # data.rename_vol()
+    # data.extractFiles_alt(masks_exist = has_annotations)
     data.extractFiles(masks_exist = has_annotations)
     df = data.createDf().assign(fold = dataset_name) #temporary
     df_p = data.process_masks(df, mode = 'binary', binary_classes=2)
@@ -298,5 +299,5 @@ def main_alt():
     print("Done!")
 
 if __name__ == "__main__":
-    # main()
-    main_alt()
+    main()
+    # main_alt()

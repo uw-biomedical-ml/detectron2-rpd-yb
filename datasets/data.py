@@ -73,7 +73,7 @@ def rename_vol():
         new_path = path_root + '/' + str(row.ptid) + '_' + row.eye + '.vol'
         os.rename(old_path, new_path)
 
-def extractFiles(masks_exist=True):
+def extractFiles_alt(masks_exist=True):
     files_to_extract = glob.glob(os.path.join(dirtoextract,'*.vol'),recursive=True)
     for i,line in enumerate(tqdm(files_to_extract)):
         fpath = line.strip('\n').replace('\\','/')
@@ -97,6 +97,31 @@ def extractFiles(masks_exist=True):
             for i in range(vol.oct.shape[0]):
                 page.save(extractpath+'/'+scan_str+'_msk-{:03d}.png'.format(i))
 
+def extractFiles(masks_exist=True):
+    if df_input is None:
+        import_csv()
+    for row in df_input.itertuples():
+        path_to_file = row.path.replace('\\','/')
+        # path_root = row.path.replace('\\','/').rsplit('/',1)[0]
+        scan_str = str(row.ptid) + '_' + row.eye
+        path_masks = path_to_file.strip('.vol').rsplit('/',1)[0]
+        extractpath = 'extracted/'+scan_str
+        os.makedirs(extractpath,exist_ok=True)
+        vol = volFile(path_to_file)
+        #myhash = get_random_string(6,allowed_chars=ascii_uppercase+digits)
+        preffix = extractpath+'/'+scan_str+'_oct'
+        #print('\n'+ preffix)
+        vol.renderOCTscans(preffix)
+ #      mfile = path+'/'+(scan_str.rsplit('_',1)[0])+'.tiff'
+        if (masks_exist):
+            mfile = path_masks+'/'+scan_str+'.tiff'
+            msk = Image.open(mfile)
+            for i,page in enumerate(ImageSequence.Iterator(msk)):
+                page.save(extractpath+'/'+scan_str+'_msk-{:03d}.png'.format(i))                
+        else: #create blank mask
+            page = Image.new('RGB',(1024,496)) #default black image
+            for i in range(vol.oct.shape[0]):
+                page.save(extractpath+'/'+scan_str+'_msk-{:03d}.png'.format(i))
 
 
 def countColors(msk,hval_list):
