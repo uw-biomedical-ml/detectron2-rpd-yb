@@ -19,6 +19,7 @@ import logging
 import os
 from collections import OrderedDict
 from fvcore.common.checkpoint import Checkpointer
+from numpy.lib import index_tricks
 import torch
 from torch.nn.parallel import DistributedDataParallel
 from pycocotools.coco import COCO
@@ -462,9 +463,55 @@ class EvaluateClass(COCOEvaluator):
     
     def summarize_scalars(self): #for pretty printing 
         p,r = self.get_precision_recall()
+        f1 = 2*(p*r)/(p + r)
         fpr = self.get_fpr()
-        dd = dict(dataset = self.dataset_name, precision = float(p),recall=float(r),fpr=float(fpr),iou=self.iou_thresh,probability=self.prob_thresh)
+
+        #Confidence intervals
+        z=1.96 #95%
+        #instance count 
+        inst_cnt = self.count_instances()
+        n_r = inst_cnt['gt_instances']
+        n_p = inst_cnt['dt_instances']
+        n_fpr = inst_cnt['gt_neg_scans']
+        
+        def stat_CI(p,n,z):
+            return z*np.sqrt(p*(1-p)/n)
+
+        int_r = stat_CI(r,n_r,z)
+        int_p = stat_CI(p,n_p,z)
+        int_fpr = stat_CI(fpr,n_fpr,z)
+        r_ci = (r-int_r,r+int_r)
+        p_ci = (p-int_p,p+int_p)
+        fpr_ci = (fpr-int_fpr,fpr+int_fpr)
+
+        #propogate errors for f1
+        int_f1 =(f1)*np.sqrt(int_r**2 * (1/r - 1/(p+r))**2 + int_p**2 * (1/p - 1/(p+r))**2)
+        f1_ci = (f1-int_f1,f1+int_f1)
+
+        dd = dict(dataset = self.dataset_name, precision = float(p),precision_ci = p_ci,recall=float(r), recall_ci = r_ci,f1 = float(f1),f1_ci = f1_ci, fpr=float(fpr),fpr_ci = fpr_ci, iou=self.iou_thresh,probability=self.prob_thresh)
         return dd
+
+    def count_instances(self):
+        gt_inst = 0
+        dt_inst = 0
+        gt_neg_scans = 0
+        for key,val in self.cocoGt.imgs.items():
+            imgid = val['id']
+            #Gt instances
+            annIdsGt = self.cocoGt.getAnnIds([imgid])
+            annsGt = self.cocoGt.loadAnns(annIdsGt)
+            gt_inst+=len(annsGt)
+            if len(annsGt)==0:
+                gt_neg_scans+=1
+
+            #Dt instances
+            annIdsDt = self.cocoDt.getAnnIds([imgid])
+            annsDt = self.cocoDt.loadAnns(annIdsDt)
+            annsDt = [ann for ann in annsDt if ann['score']>self.prob_thresh]
+            dt_inst+=len(annsDt)
+
+        return dict(gt_instances=gt_inst,dt_instances=dt_inst,gt_neg_scans = gt_neg_scans)
+
 
 from sklearn.metrics import precision_recall_curve,average_precision_score
 class CreatePlotsRPD():
@@ -563,10 +610,15 @@ class CreatePlotsRPD():
         return pr,rc,fpr
 
     def plot_img_level_instance_thresholding2(self,df,inst,gt_thresh):
+        def stat_CI(p,n,z):
+            return z*np.sqrt(p*(1-p)/n)
 
         rc = np.zeros((len(inst),))
         pr = np.zeros((len(inst),))
         fpr = np.zeros((len(inst),))
+        rc_ci = np.zeros((len(inst),2))
+        pr_ci = np.zeros((len(inst),2))
+        fpr_ci = np.zeros((len(inst),2))
 
         fig, ax = plt.subplots(1,3,figsize = [15,5])
         for i,dt_thresh in enumerate(inst):
@@ -575,26 +627,39 @@ class CreatePlotsRPD():
             rc[i] = (gt&dt).sum()/gt.sum()
             pr[i] = (gt&dt).sum()/dt.sum()
             fpr[i] = ((~gt)&(dt)).sum()/((~gt).sum())
+            int_rc = stat_CI(rc[i],gt.sum(),1.96)
+            rc_ci[i,:] = [rc[i]-int_rc, rc[i] + int_rc]
+            int_pr = stat_CI(pr[i],dt.sum(),1.96)
+            pr_ci[i,:] = [pr[i]-int_pr, pr[i] + int_pr]
+            int_fpr = stat_CI(fpr[i],((~gt).sum()),1.96)
+            fpr_ci[i,:] = [fpr[i]-int_fpr, fpr[i] + int_fpr]
+
+        # ax[0].plot(rc,pr)
+        # ax[0].set_xlabel('Recall')
+        # ax[0].set_ylabel('Precision')
 
         ax[1].plot(inst,pr)
-        ax[1].set_ylim(0.45,1.01)
+        ax[1].fill_between(inst,pr_ci[:,0],pr_ci[:,1])
+        #ax[1].set_ylim(0.45,1.01)
         ax[1].set_xlabel('instance threshold')
         ax[1].set_ylabel('Precision')
 
 
         ax[0].plot(inst,rc)
-        ax[0].set_ylim(0.45,1.01)
+        ax[0].fill_between(inst,rc_ci[:,0],rc_ci[:,1])
+        #ax[0].set_ylim(0.45,1.01)
         ax[0].set_ylabel('Recall')
         ax[0].set_xlabel('instance threshold')
 
 
         ax[2].plot(inst,fpr)
-        ax[2].set_ylim(0,0.80)
+        ax[2].fill_between(inst,fpr_ci[:,0],fpr_ci[:,1])
+        #ax[2].set_ylim(0,0.80)
         ax[2].set_xlabel('instance threshold')
         ax[2].set_ylabel('FPR')
 
         plt.tight_layout()
-        return pr,rc,fpr
+        return dict(precision=pr,precision_ci = pr_ci,recall=rc,recall_ci = rc_ci, fpr=fpr,fpr_ci = fpr_ci)
 
     def gt_vs_dt_instances(self,ax=None):
         df = self.dfimg
