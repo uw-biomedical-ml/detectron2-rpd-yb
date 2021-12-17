@@ -98,6 +98,8 @@ def extractFiles_alt(masks_exist=True):
                 page.save(extractpath+'/'+scan_str+'_msk-{:03d}.png'.format(i))
 
 def extractFiles(masks_exist=True):
+    global filedir
+    filedir = 'extracted'
     if df_input is None:
         import_csv()
     for row in df_input.itertuples():

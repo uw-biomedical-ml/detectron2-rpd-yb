@@ -190,9 +190,6 @@ def create_dfimg():
 
 def main():
     parser = argparse.ArgumentParser(description='Run the detectron2 pipeline.')
-    # parser.add_argument('root', metavar = 'P', help='The path of the folder containing your data folder and the extraction folder.')
-    # parser.add_argument('data', metavar = 'D', help='The path of the data folder containing your .vol files.')
-    # parser.add_argument('extracted', metavar = 'E', help='The path of the extraction folder that will contain your extracted files.')
     parser.add_argument('name', metavar = 'N', help='The name of your dataset.')
     parser.add_argument('csv', metavar = 'P', help='The path to the input dataset .csv file.'  )
     parser.add_argument('--mask', action ='store_true', help= 'If your data comes with annotations or masks.')
@@ -207,12 +204,6 @@ def main():
     has_annotations = args.mask
     dataset_name = args.name
     data.inputcsv = args.csv
-    # data.rpath= args.root #root path for files
-    # data.dirtoextract = args.data #extracted from
-    # data.filedir = args.extracted #split from
-    # print("after")
-    # print("dirtoextract:",data.dirtoextract)
-    # print("filedir:",data.filedir)
     print("Has annotations: ", has_annotations)
     print("Processing input...")
     process_input(has_annotations = has_annotations)
@@ -249,7 +240,6 @@ def main_alt():
     parser.add_argument('data', metavar = 'D', help='The path of the data folder containing your .vol files.')
     parser.add_argument('extracted', metavar = 'E', help='The path of the extraction folder that will contain your extracted files.')
     parser.add_argument('name', metavar = 'N', help='The name of your dataset.')
-    # parser.add_argument('csv', metavar = 'P', help='The path to the input dataset .csv file.'  )
     parser.add_argument('--mask', action ='store_true', help= 'If your data comes with annotations or masks.')
     parser.add_argument('--bm', action ='store_true', help='Output binary mask tif files.')
     parser.add_argument('--bmo', action ='store_true', help='Output binary mask overlay tif files.')
@@ -261,13 +251,9 @@ def main_alt():
     global dataset_name
     has_annotations = args.mask
     dataset_name = args.name
-    # data.inputcsv = args.csv
     data.rpath= args.root #root path for files
     data.dirtoextract = args.data #extracted from
     data.filedir = args.extracted #split from
-    # print("after")
-    # print("dirtoextract:",data.dirtoextract)
-    # print("filedir:",data.filedir)
     print("Has annotations: ", has_annotations)
     print("Processing input...")
     process_input(has_annotations = has_annotations)
