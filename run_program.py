@@ -36,9 +36,7 @@ ens = None
 
 def process_input(has_annotations=False): # Processes input .vol files and creates the pk file.
     data.import_csv()
-    # data.rename_vol()
-    # data.extractFiles_alt(masks_exist = has_annotations)
-    data.extractFiles(masks_exist = has_annotations)
+    data.extractFiles(masks_exist = has_annotations, name = dataset_name)
     df = data.createDf().assign(fold = dataset_name) #temporary
     df_p = data.process_masks(df, mode = 'binary', binary_classes=2)
     stored_data = data.rpd_data(df_p, grp = dataset_name, data_has_ann = has_annotations)

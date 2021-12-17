@@ -59,7 +59,7 @@ def import_csv():
     global df_input
     df_input = pd.read_csv(inputcsv)
 
-def rename_vol():
+def rename_vol_alt():
     global dirtoextract
     global filedir
     if df_input is None:
@@ -97,9 +97,9 @@ def extractFiles_alt(masks_exist=True):
             for i in range(vol.oct.shape[0]):
                 page.save(extractpath+'/'+scan_str+'_msk-{:03d}.png'.format(i))
 
-def extractFiles(masks_exist=True):
+def extractFiles(masks_exist=True, name = None):
     global filedir
-    filedir = 'extracted'
+    filedir = str(name) + '_extracted'
     if df_input is None:
         import_csv()
     for row in df_input.itertuples():
@@ -107,7 +107,7 @@ def extractFiles(masks_exist=True):
         # path_root = row.path.replace('\\','/').rsplit('/',1)[0]
         scan_str = str(row.ptid) + '_' + row.eye
         path_masks = path_to_file.strip('.vol').rsplit('/',1)[0]
-        extractpath = 'extracted/'+scan_str
+        extractpath = str(name) + '_extracted/'+scan_str
         os.makedirs(extractpath,exist_ok=True)
         vol = volFile(path_to_file)
         #myhash = get_random_string(6,allowed_chars=ascii_uppercase+digits)
