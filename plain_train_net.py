@@ -74,6 +74,7 @@ from PIL import Image
 import matplotlib.pyplot as plt
 plt.style.use('ybpres.mplstyle')
 from matplotlib.backends.backend_pdf import PdfPages
+import seaborn as sns
 import json
 import sys
 
@@ -145,7 +146,7 @@ class OutputVis():
 
     def produce_model_image(self,ImgId,dat,im):
         v_dt = Visualizer(im, MetadataCatalog.get(self.dataset_name), scale=3.0)
-        v_dt._default_font_size = 14
+        v_dt._default_font_size = 28
 
         #get predictions from model or file
         if self._mode=='model':
@@ -320,6 +321,15 @@ class OutputVis():
             imgs[0].save("instances_mask_overlays/" + str(ptid) + "_" + str(eye) + "-ipmasks_overlay.png")
 
 #########################################################################################################
+
+def Wilson_CI(p,n,z):
+    sym = z*(p*(1-p)/n + z*z/4/n/n)**.5
+    asym = p + z*z/2/n
+    fact = 1/(1+z*z/n)
+    upper = fact*(asym+sym)
+    lower = fact*(asym-sym)
+    return (lower,upper)
+
 class EvaluateClass(COCOEvaluator):  
     def __init__(self,dataset_name, output_dir,prob_thresh=0.5,iou_thresh = 0.1,evalsuper=True):
         super().__init__(dataset_name,tasks={'bbox','segm'},output_dir = output_dir)
@@ -467,7 +477,7 @@ class EvaluateClass(COCOEvaluator):
         fpr = self.get_fpr()
 
         #Confidence intervals
-        z=1.96 #95%
+        z=1.96 #95% Gaussian
         #instance count 
         inst_cnt = self.count_instances()
         n_r = inst_cnt['gt_instances']
@@ -477,14 +487,13 @@ class EvaluateClass(COCOEvaluator):
         def stat_CI(p,n,z):
             return z*np.sqrt(p*(1-p)/n)
 
-        int_r = stat_CI(r,n_r,z)
-        int_p = stat_CI(p,n_p,z)
-        int_fpr = stat_CI(fpr,n_fpr,z)
-        r_ci = (r-int_r,r+int_r)
-        p_ci = (p-int_p,p+int_p)
-        fpr_ci = (fpr-int_fpr,fpr+int_fpr)
+        r_ci = Wilson_CI(r,n_r,z) 
+        p_ci = Wilson_CI(p,n_p,z)
+        fpr_ci = Wilson_CI(fpr,n_fpr,z)
 
         #propogate errors for f1
+        int_r = stat_CI(r,n_r,z)
+        int_p = stat_CI(p,n_p,z)
         int_f1 =(f1)*np.sqrt(int_r**2 * (1/r - 1/(p+r))**2 + int_p**2 * (1/p - 1/(p+r))**2)
         f1_ci = (f1-int_f1,f1+int_f1)
 
@@ -567,10 +576,10 @@ class CreatePlotsRPD():
         ax.plot(prc[1],prc[0])
         ax.set_xlabel('RPD Eye Recall')
         ax.set_ylabel('RPD Eye Precision')
-        fig2,ax2 = plt.subplots(1,1)
-        ax2.plot(prc[1][:-1],prc[2])
-        ax2.set_ylabel('RPD Instance Threshold')
-        ax2.set_xlabel('RPD Eye Recall')
+        # fig2,ax2 = plt.subplots(1,1)
+        # ax2.plot(prc[1][:-1],prc[2])
+        # ax2.set_ylabel('RPD Instance Threshold')
+        # ax2.set_xlabel('RPD Eye Recall')
 
         ap = average_precision_score(df.gt_instances>=gt_thresh,df.dt_instances)
         return ap,prc
@@ -609,9 +618,15 @@ class CreatePlotsRPD():
         plt.tight_layout()
         return pr,rc,fpr
 
-    def plot_img_level_instance_thresholding2(self,df,inst,gt_thresh):
-        def stat_CI(p,n,z):
-            return z*np.sqrt(p*(1-p)/n)
+    def plot_img_level_instance_thresholding2(self,df,inst,gt_thresh,plot=True):
+
+        def Wilson_CI(p,n,z):
+            sym = z*(p*(1-p)/n + z*z/4/n/n)**.5
+            asym = p + z*z/2/n
+            fact = 1/(1+z*z/n)
+            upper = fact*(asym+sym)
+            lower = fact*(asym-sym)
+            return (lower,upper)
 
         rc = np.zeros((len(inst),))
         pr = np.zeros((len(inst),))
@@ -620,45 +635,44 @@ class CreatePlotsRPD():
         pr_ci = np.zeros((len(inst),2))
         fpr_ci = np.zeros((len(inst),2))
 
-        fig, ax = plt.subplots(1,3,figsize = [15,5])
+        
         for i,dt_thresh in enumerate(inst):
             gt = df.gt_instances>=gt_thresh
             dt = df.dt_instances>=dt_thresh
             rc[i] = (gt&dt).sum()/gt.sum()
             pr[i] = (gt&dt).sum()/dt.sum()
             fpr[i] = ((~gt)&(dt)).sum()/((~gt).sum())
-            int_rc = stat_CI(rc[i],gt.sum(),1.96)
-            rc_ci[i,:] = [rc[i]-int_rc, rc[i] + int_rc]
-            int_pr = stat_CI(pr[i],dt.sum(),1.96)
-            pr_ci[i,:] = [pr[i]-int_pr, pr[i] + int_pr]
-            int_fpr = stat_CI(fpr[i],((~gt).sum()),1.96)
-            fpr_ci[i,:] = [fpr[i]-int_fpr, fpr[i] + int_fpr]
+            rc_ci[i,:] = Wilson_CI(rc[i],gt.sum(),1.96)
+            pr_ci[i,:]= Wilson_CI(pr[i],dt.sum(),1.96)
+            fpr_ci[i,:] = Wilson_CI(fpr[i],((~gt).sum()),1.96)
 
-        # ax[0].plot(rc,pr)
-        # ax[0].set_xlabel('Recall')
-        # ax[0].set_ylabel('Precision')
+        if plot:
+            fig, ax = plt.subplots(1,3,figsize = [15,5])
+            # ax[0].plot(rc,pr)
+            # ax[0].set_xlabel('Recall')
+            # ax[0].set_ylabel('Precision')
 
-        ax[1].plot(inst,pr)
-        ax[1].fill_between(inst,pr_ci[:,0],pr_ci[:,1])
-        #ax[1].set_ylim(0.45,1.01)
-        ax[1].set_xlabel('instance threshold')
-        ax[1].set_ylabel('Precision')
-
-
-        ax[0].plot(inst,rc)
-        ax[0].fill_between(inst,rc_ci[:,0],rc_ci[:,1])
-        #ax[0].set_ylim(0.45,1.01)
-        ax[0].set_ylabel('Recall')
-        ax[0].set_xlabel('instance threshold')
+            ax[1].plot(inst,pr)
+            ax[1].fill_between(inst,pr_ci[:,0],pr_ci[:,1],alpha=.25)
+            #ax[1].set_ylim(0.45,1.01)
+            ax[1].set_xlabel('instance threshold')
+            ax[1].set_ylabel('Precision')
 
 
-        ax[2].plot(inst,fpr)
-        ax[2].fill_between(inst,fpr_ci[:,0],fpr_ci[:,1])
-        #ax[2].set_ylim(0,0.80)
-        ax[2].set_xlabel('instance threshold')
-        ax[2].set_ylabel('FPR')
+            ax[0].plot(inst,rc)
+            ax[0].fill_between(inst,rc_ci[:,0],rc_ci[:,1],alpha=.25)
+            #ax[0].set_ylim(0.45,1.01)
+            ax[0].set_ylabel('Recall')
+            ax[0].set_xlabel('instance threshold')
 
-        plt.tight_layout()
+
+            ax[2].plot(inst,fpr)
+            ax[2].fill_between(inst,fpr_ci[:,0],fpr_ci[:,1],alpha=.25)
+            #ax[2].set_ylim(0,0.80)
+            ax[2].set_xlabel('instance threshold')
+            ax[2].set_ylabel('FPR')
+
+            plt.tight_layout()
         return dict(precision=pr,precision_ci = pr_ci,recall=rc,recall_ci = rc_ci, fpr=fpr,fpr_ci = fpr_ci)
 
     def gt_vs_dt_instances(self,ax=None):
@@ -681,7 +695,41 @@ class CreatePlotsRPD():
         plt.ylabel('dt_instances')
         plt.tight_layout()
         return ax
+
+    def gt_vs_dt_instances_boxplot(self,ax=None):
+        df = self.dfimg
+        max_inst,max_xpxs,max_pxs = self.get_max_limits(df) 
+        max_inst = int(max_inst)
+        if ax==None:
+            fig = plt.figure(dpi=100)
+            ax = fig.add_subplot(111)
         
+       
+
+
+        ax.plot([0,max_inst+1],[0,max_inst+1],alpha=.5)
+        x = df['gt_instances'].values.astype(int)
+        y = df['dt_instances'].values.astype(int)
+        sns.boxplot(x,y, ax=ax,width=.5)
+        ax.set_xbound(0,max_inst+1)
+        ax.set_ybound(0,max_inst+1)        
+        ax.set_aspect('equal')
+        
+
+        ax.set_title('')
+        ax.set_xlabel('gt_instances')
+        ax.set_ylabel('dt_instances')
+
+        import matplotlib.ticker as pltticker
+        loc = pltticker.MultipleLocator(base=2.0)
+        ax.xaxis.set_major_locator(loc)
+        ax.yaxis.set_major_locator(loc)
+
+
+        return ax
+
+
+
     def gt_vs_dt_xpxs(self):
         df = self.dfimg
         max_inst,max_xpxs,max_pxs = self.get_max_limits(df)

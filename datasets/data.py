@@ -384,12 +384,13 @@ def rpd_data(df, grp = "train",data_has_ann=True):
         #for fn in tqdm(glob(f"{rootdir}/{grp}/images/all/*.png")):
             imageid = fn.split("/")[-1]
             #segfn = fn.replace("/images/", "/masks/").replace("_oct", "_msk")
-            if not os.path.isfile(segfn):
-                print(fn)
+            # if not os.path.isfile(segfn):
+            #     print(fn)
             im = cv2.imread(fn)
-            seg = cv2.imread(segfn)
+            
             dat = dict(file_name = fn, height = im.shape[0], width = im.shape[1], image_id = imageid)
             if data_has_ann: 
+                seg = cv2.imread(segfn)    
                 annotations = []             
                 if (np.max(seg) != 0):
                     
