@@ -30,6 +30,6 @@ To install miniconda with detectron2, run "conda_install.bat".
 
 After the bat file finishes, the setup is complete. You can now run the model.
 
-Running Detectron2-RPD
+Step 3) Running Detectron2-RPD
 
 To run the model, run "run_program.bat"
