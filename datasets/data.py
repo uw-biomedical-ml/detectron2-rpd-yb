@@ -380,12 +380,11 @@ def rpd_data(df, grp = "train",data_has_ann=True):
     ii=0
     outname = os.path.join(script_dir, grp+'_instance_refine_all.pdf')
     with PdfPages(outname) as pdf:
-        for fn,segfn in tqdm(df[['img_path','msk_path']].values):
-        #for fn in tqdm(glob(f"{rootdir}/{grp}/images/all/*.png")):
-            imageid = fn.split("/")[-1]
-            #segfn = fn.replace("/images/", "/masks/").replace("_oct", "_msk")
-            # if not os.path.isfile(segfn):
-            #     print(fn)
+        for index,row in tqdm(df.iterrows()):
+            fn,segfn = row[['img_path','msk_path']]
+            imageid = row['instance'] + '_{:03}'.format(row['slicei'])
+        #for fn,segfn in tqdm(df[['img_path','msk_path']].values):
+            #imageid = fn.split("/")[-1]
             im = cv2.imread(fn)
             
             dat = dict(file_name = fn, height = im.shape[0], width = im.shape[1], image_id = imageid)

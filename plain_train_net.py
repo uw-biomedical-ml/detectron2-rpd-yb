@@ -112,6 +112,7 @@ class OutputVis():
         if draw_mode not in permitted_draw_modes:
             sys.exit('draw_mode must be one of the following: {}'.format(permitted_draw_modes))
         self.draw_mode = draw_mode
+        self.font_size = 16 #28 for ARVO
 
     def get_ori_image(self,ImgId):
         dat = self.get_gt_image_data(ImgId) #gt
@@ -146,7 +147,7 @@ class OutputVis():
 
     def produce_model_image(self,ImgId,dat,im):
         v_dt = Visualizer(im, MetadataCatalog.get(self.dataset_name), scale=3.0)
-        v_dt._default_font_size = 28
+        v_dt._default_font_size = self.font_size
 
         #get predictions from model or file
         if self._mode=='model':
@@ -190,8 +191,14 @@ class OutputVis():
     def height_crop_range(im,height_target=256):
         yhist = im.sum(axis=1) #integrate over width of image
         mu = np.average(np.arange(yhist.shape[0]),weights = yhist)
-        h1 = int(np.floor(mu-height_target/2))
-        h2 = int(np.ceil(mu+height_target/2))
+        h1 = int(np.floor(mu-height_target/2)) #inclusive
+        h2 = int(np.ceil(mu+height_target/2)) #exclusive
+        if h1<0:
+            h1 = 0
+            h2 = height_target
+        if h2>yhist.shape[0]:
+            h2 = yhist.shape[0]
+            h1 = h2-height_target
         return range(h1,h2)
 
     def output_to_pdf(self,ImgIds,outname,dfimg=None):
@@ -258,7 +265,97 @@ class OutputVis():
             imgs.append(img_result)
         self.save_imgarr_to_tiff(imgs,outname)
 
+    def get_enface_dt(self,grp,scan_height,scan_width,scan_spacing):
+        """Return enface perspective of model predictions for a single scan volume whose imgids are listed in the index of grp.
 
+        Args:
+            grp (pandas.DataFrame): Dataframe containing images from a single scan volume indexed by ImageId.
+            scan_height (int): Image height in pixels.
+            scan_width (int): Image width in pixels.
+            scan_spacing (float): The spacing between scan centers in pixels.
+
+        Returns:
+            np.array: Numpy array of dimension [scan_spacing*number of scans,scan_width,3]. 
+        """
+        grp = grp.sort_index()
+        nscans = len(grp)
+        enface_height = int(np.ceil((nscans-1)*scan_spacing))
+        enface = np.zeros((enface_height,scan_width,3),dtype=int)
+        for i,imgid in enumerate(grp.index):
+            pos = int(np.clip(np.floor(scan_spacing*i),0,scan_width-1))
+
+
+            outputs = self.get_outputs_from_file(imgid,(scan_height,scan_width))
+            outputs = outputs[outputs.scores>self.prob_thresh]
+            instances = outputs.pred_boxes[:,(0,2)].round().clip(0,scan_width-1).to(np.int)
+
+            for inst in instances:
+                try:
+                    enface[max(pos-4,0):min(pos+4,scan_width-1),inst[0]:inst[1]]=np.array([255,255,255])#random_color(rgb = True)
+                except(IndexError):
+                    print( pos, inst[0],inst[1])
+        return enface 
+
+    def get_enface_gt(self,grp,scan_height,scan_width,scan_spacing):
+        """Return enface perspective of ground truth annotations for a single scan volume whose imgids are listed in the index of grp.
+
+        Args:
+            grp (pandas.DataFrame): Dataframe containing images from a single scan volume indexed by ImageId.
+            scan_height (int): Image height in pixels.
+            scan_width (int): Image width in pixels.
+            scan_spacing (float): The spacing between scan centers in pixels.
+
+        Returns:
+            np.array: Numpy array of dimension [scan_spacing*number of scans,scan_width,3]. 
+        """
+        grp = grp.sort_index()
+        nscans = len(grp)
+        enface_height = int(np.ceil((nscans-1)*scan_spacing))
+        enface = np.zeros((enface_height,scan_width,3),dtype=int)
+        if not self.has_annotations:
+            enface[:,:] = np.array([100,100,100])
+
+        else:
+            #minx = scan_width
+            for i,imgid in enumerate(grp.index):
+                pos = int(np.clip(np.floor(scan_spacing*i),0,scan_width-1))
+                instances =  self.get_gt_image_data(imgid)['annotations']
+                for inst in instances:
+                    x1= inst['bbox'][0]
+                    #minx = min(minx,x1)
+                    x2 = x1 + inst['bbox'][2]
+                    try:
+                        enface[max(pos-4,0):min(pos+4,scan_width-1),x1:x2]=np.array([255,255,255])#random_color(rgb = True)
+                    except(IndexError):
+                        print( pos, x1,x2)
+        return enface
+
+    def compare_enface(self,grp,name,scan_height,scan_width,scan_spacing):
+        """Return figure comparing detector enface perspective of model prediction with ground truth.
+
+        Args:
+            grp (pandas.DataFrame): Dataframe containing images from a single scan volume indexed by ImageId.
+            name (str): The name of the group identified by scan volume ID.
+            scan_height (int): Image height in pixels.
+            scan_width (int): Image width in pixels.
+            scan_spacing (float): The spacing between scan centers in pixels.
+
+        Returns:
+            (matplotlib.figure.Figure, array(AxesSubplot)): Tuple of figure handle and array of subplot axes.
+        """
+        fig, ax = plt.subplots(1,2,figsize=[18,9],dpi=120)
+        
+        enface = self.get_enface_dt(grp,scan_height,scan_width,scan_spacing)
+        ax[0].imshow(enface)
+        ax[0].set_title(str(name) + ' DT')
+        ax[0].set_aspect('equal')
+
+
+        enface = self.get_enface_gt(grp,scan_height,scan_width,scan_spacing)      
+        ax[1].imshow(enface)
+        ax[1].set_title(str(name) + ' GT')
+        ax[1].set_aspect('equal')
+        return fig,ax                    
 #########################################################################################################
     def output_masks_to_tiff(self, ImgIds, ptid, eye):
         imgs = []
@@ -323,6 +420,12 @@ class OutputVis():
 #########################################################################################################
 
 def Wilson_CI(p,n,z):
+    if (p<0 or p>1 or n==0):
+        if (p<0 or p>1):
+            warnings.warn(f'The value of proportion {p} must be in the range [0,1]. Returning identity for CIs.')
+        else:
+            warnings.warn(f'The number of counts {n} must be above zero. Returning identity for CIs.')
+        return (p,p)
     sym = z*(p*(1-p)/n + z*z/4/n/n)**.5
     asym = p + z*z/2/n
     fact = 1/(1+z*z/n)
@@ -526,7 +629,7 @@ from sklearn.metrics import precision_recall_curve,average_precision_score
 class CreatePlotsRPD():
     def __init__(self,dfimg):
         self.dfimg = dfimg
-        self.dfpts = self.dfimg.groupby(['ptid','eye'])[['gt_instances','gt_pxs','gt_xpxs','dt_instances','dt_pxs','dt_xpxs']].sum()
+        self.dfpts = self.dfimg.groupby(['volID'])[['gt_instances','gt_pxs','gt_xpxs','dt_instances','dt_pxs','dt_xpxs']].sum()
         
     @classmethod
     def initfromcoco(cls,mycoco,prob_thresh):
@@ -549,7 +652,7 @@ class CreatePlotsRPD():
             dat = [len(instGt),np.array(instGt).sum(),np.array(xprojGt).sum(),len(instDt),np.array(instDt).sum(),np.array(xprojDt).sum()]
             df.loc[key] = dat
             
-        newdf = pd.DataFrame([idx.strip('.png').split('_') for idx in df.index],columns=['ptid','eye','scan'],index = df.index)
+        newdf = pd.DataFrame([idx.rsplit('.',1)[0].split('_') for idx in df.index],columns=['volID','scan'],index = df.index)
         df = df.merge(newdf,how='inner',left_index=True,right_index=True)
         return cls(df)
     
