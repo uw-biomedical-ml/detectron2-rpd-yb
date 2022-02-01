@@ -115,6 +115,14 @@ class OutputVis():
         self.font_size = 16 #28 for ARVO
 
     def get_ori_image(self,ImgId):
+        """[summary]
+
+        Args:
+            ImgId (str): Value of image_id in image data structure. 
+
+        Returns:
+            PIL.Image: Original image fed into the model scaled up by a factor of 3 for visualization.
+        """
         dat = self.get_gt_image_data(ImgId) #gt
         im = cv2.imread(dat['file_name']) #input to model
         v_gt = Visualizer(im, MetadataCatalog.get(self.dataset_name), scale=3.0)
@@ -123,10 +131,28 @@ class OutputVis():
         return img
 
     def get_gt_image_data(self,ImgId):
+        """Returns image ground truth image entry for corresponding to ImgId.
+
+        Args:
+            ImgId (str): Value of image_id in image data structure.
+
+        Returns:
+            dict: Dictionary for the image with corresponding ImgId.
+        """
         gt_data = next(item for item in self.data if (item['image_id'] == ImgId))
         return gt_data    
 
     def produce_gt_image(self,dat,im):
+        """Returns image im overlayed with ground truth instances found in dat if there are any. Depending on visualizer mode, the instances are separate colors or monochrome.
+
+        Args:
+            dat (dict): Dictionary for the image im containing ground truth annotations.
+            im (numpy array): a numpy array of shape (H, W, C), where H and W correspond to
+        the height and width of the image respectively. C is the number of color channels. The image is required to be in RGB format since that is a requirement of the Matplotlib library. The image is also expected to be in the range [0, 255].
+
+        Returns:
+            PIL.Image: The resulting original image overlayed with ground truth instances.
+        """
         v_gt = Visualizer(im, MetadataCatalog.get(self.dataset_name), scale=3.0) 
         if (self.has_annotations): #ground truth boxes and masks
             segs = [ddict['segmentation'] for ddict in dat['annotations']]
@@ -146,6 +172,17 @@ class OutputVis():
         return img
 
     def produce_model_image(self,ImgId,dat,im):
+        """Returns image im overlayed with instances predicted by the model. Depending on visualizer mode the model predicts on the image im or reads the predictions from file based on the given ImgId.
+
+        Args:
+            ImgId (str): Value of image_id in image data structure.
+            dat (dict): Dictionary for the image im. Used for height and width parameters.
+            im (numpy array): a numpy array of shape (H, W, C), where H and W correspond to
+        the height and width of the image respectively. C is the number of color channels. The image is required to be in RGB format since that is a requirement of the Matplotlib library. The image is also expected to be in the range [0, 255].
+
+        Returns:
+            PIL.Image: The resulting original image overlayed with model-predicted instances.
+        """
         v_dt = Visualizer(im, MetadataCatalog.get(self.dataset_name), scale=3.0)
         v_dt._default_font_size = self.font_size
 
@@ -162,14 +199,32 @@ class OutputVis():
         img_model = Image.fromarray(result_model)
         return img_model
 
-    def get_image(self,ImgId): 
+    def get_image(self,ImgId):
+        """Returns the ground truth and model prediction overlays for the image corresponding to ImgId.
+
+        Args:
+            ImgId (str): Value of image_id in image data structure.
+
+        Returns:
+            (PIL.Image,PIL.Image): Tuple of PIL.images corresponding to ground truth and model prediction respectively.
+        """
         dat = self.get_gt_image_data(ImgId) #gt
         im = cv2.imread(dat['file_name']) #input to model
         img = self.produce_gt_image(dat,im)
         img_model = self.produce_model_image(ImgId,dat,im)
         return img, img_model
   
-    def get_outputs_from_file(self,ImgId,imgsize):       
+    def get_outputs_from_file(self,ImgId,imgsize): 
+        """For image with image_id ImgId, reads in and converts instances from coco format in self.pred_file to a detectron2 Instances structure required for the visulizer utility.
+
+        Args:
+            ImgId (str): Value of image_id in image data structure.
+            imgsize (tuple): Height and width of the image in pixels.
+
+        Returns:
+            detectron2.structures.Instances: The correctly formated data structure to be used to the detectron2 visualizer utility.
+        """
+
         pred_boxes = []
         scores = []
         pred_classes = []
@@ -189,6 +244,15 @@ class OutputVis():
 
     @staticmethod
     def height_crop_range(im,height_target=256):
+        """Find the range of pixels in the height dimension spanning the height height_target which contain the brightest regions of the image. 
+
+        Args:
+            im (numpy array): a numpy array of shape (H, W, C)
+            height_target (int, optional): The desired span of the image height. Defaults to 256.
+
+        Returns:
+            range: The starting and stopping pixels for cropping the image height.
+        """
         yhist = im.sum(axis=1) #integrate over width of image
         mu = np.average(np.arange(yhist.shape[0]),weights = yhist)
         h1 = int(np.floor(mu-height_target/2)) #inclusive
@@ -202,6 +266,13 @@ class OutputVis():
         return range(h1,h2)
 
     def output_to_pdf(self,ImgIds,outname,dfimg=None):
+        """Create pdf with name outname displaying ground truth and model prediction overlays for image ids listed in ImgIds.
+
+        Args:
+            ImgIds (list(str)): List of image_id values to output. 
+            outname (str): path name for pdf    
+            dfimg (pandas.DataFrame, optional): A dataframe of stats to display for each image. Defaults to None.
+        """
 
         gtstr = ''
         dtstr = ''
@@ -234,12 +305,24 @@ class OutputVis():
                 plt.close(fig)
 
     def save_imgarr_to_tiff(self,imgs,outname):
+        """Save array of images in stacked tiff format (one image per page).
+
+        Args:
+            imgs (array(PIL.Images)): An array of PIL.Images to save.
+            outname (str): Path name to save to.
+        """
         if len(imgs) > 1:
             imgs[0].save(outname, tags = "", compression = "tiff_deflate", save_all=True, append_images=imgs[1:])
         else:
             imgs[0].save(outname) 
 
     def output_ori_to_tiff(self,ImgIds,outname):
+        """Save list of original images corresponding to ImgIds in stacked tiff format.
+
+        Args:
+            ImgIds (list(str)): A list of image_ids for images to save.
+            outname (str): Path name to save to.
+        """
         imgs = [] 
         for imgid in tqdm(ImgIds):
             img_ori = self.get_ori_image(imgid) #PIL Image
@@ -247,6 +330,12 @@ class OutputVis():
         self.save_imgarr_to_tiff(imgs,outname)
 
     def output_pred_to_tiff(self,ImgIds,outname):
+        """Save list of images overlayed with the model predictions in stacked tiff format.     
+
+        Args:
+            ImgIds (list(str)): A list of image_ids for images to save.
+            outname (str): Path name to save to.
+        """
         imgs = [] 
         for imgid in tqdm(ImgIds):
             dat = self.get_gt_image_data(imgid) #gt
@@ -256,6 +345,12 @@ class OutputVis():
         self.save_imgarr_to_tiff(imgs,outname)
 
     def output_all_to_tiff(self,ImgIds,outname):
+        """Save list of images (original, ground truth overlay, and model prediction overlay) to stacked tiff format. 
+
+        Args:
+            ImgIds (list(str)): A list of image_ids for images to save.
+            outname (str): Path name to save to.
+        """
         imgs = []
         for imgid in tqdm(ImgIds):
             img_gt, img_dt = self.get_image(imgid)
@@ -282,7 +377,7 @@ class OutputVis():
         enface_height = int(np.ceil((nscans-1)*scan_spacing))
         enface = np.zeros((enface_height,scan_width,3),dtype=int)
         for i,imgid in enumerate(grp.index):
-            pos = int(np.clip(np.floor(scan_spacing*i),0,scan_width-1))
+            pos = int(np.clip(np.floor(scan_spacing*i),0,scan_width-1)) #vertical enface position
 
 
             outputs = self.get_outputs_from_file(imgid,(scan_height,scan_width))
