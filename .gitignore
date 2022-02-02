@@ -16,5 +16,5 @@ msk_instances_overlays/
 output_Test Set/
 *.csv
 bat files/detectron2
-extracted/
+Test Set_extracted/
 *.png
