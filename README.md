@@ -41,14 +41,20 @@ Once inside the folder, run the following command to run the model:
 python run_program.py %input% %output% --bm --bmo --im --ptid --imgid
 
 Required flags:
+
 %input% = path to the input .csv file
+
 %output% = path to the folder where outputs will be stored (NOTE: Folder must already exist!)
 
 Optional flags:
 bm = binary mask
+
 bmo = binary mask overlay
+
 im = instance mask overlay
+
 ptid = dataset html (by ptid)
+
 imgid = dataset html (by imgid)
 
 
