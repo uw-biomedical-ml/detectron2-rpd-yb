@@ -38,9 +38,11 @@ In the prompt window, navigate to the detectron2-rpd-yb folder (using cd).
 
 Once inside the folder, run the following command to run the model:
 
-python run_program.py %input% %output% --bm --bmo --im --ptid --imgid
+python run_program.py %dataset% %input% %output% --bm --bmo --im --ptid --imgid
 
 Required flags:
+
+%dataset% = name of the dataset
 
 %input% = path to the input .csv file
 
