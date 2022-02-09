@@ -9,6 +9,7 @@ extracted_test_overlays/
 msk_extracted_overlays/
 instances_mask_overlays/
 msk_instances_overlays/
+output_Test Set/
 *.pk
 *.pdf
 *.html

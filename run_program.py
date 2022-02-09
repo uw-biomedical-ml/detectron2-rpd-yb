@@ -32,6 +32,7 @@ dataset_table = None
 cfg = None
 myeval = None
 ens = None
+output_path = None
 
 
 def process_input(has_annotations=False): # Processes input .vol files and creates the pk file.
@@ -58,13 +59,13 @@ def register_dataset():
 def run_prediction(cfg,dataset_name):
     model = build_model(cfg)  # returns a torch.nn.Module
     myloader = build_detection_test_loader(cfg,dataset_name) 
-    myeval = COCOEvaluator(dataset_name,tasks={'bbox','segm'},output_dir ="output_"+ dataset_name) #produces _coco_format.json when initialized
+    myeval = COCOEvaluator(dataset_name,tasks={'bbox','segm'},output_dir =output_path) #produces _coco_format.json when initialized
     for mdl in ("fold1", "fold2", "fold3", "fold4","fold5"):
         model_weights_path = "/data/amd-data/cera-rpd/detectron2-rpd/output_valid_"+ mdl +"/model_final.pth"
         DetectionCheckpointer(model).load(model_weights_path);  # load a file, usually from cfg.MODEL.WEIGHTS
         model.eval() #set model in evaluation mode
         myeval.reset()
-        output_dir = "output_"+ dataset_name + "/"+mdl
+        output_dir = os.path.join(output_path, mdl)
         myeval._output_dir = output_dir
         print("Running inference with model ", mdl)
         results_i = inference_on_dataset(model, myloader, myeval) #produces coco_instance_results.json when myeval.evaluate is called
@@ -72,15 +73,15 @@ def run_prediction(cfg,dataset_name):
 
 def run_ensemble():
     global ens
-    ens = Ensembler('output_'+dataset_name,dataset_name,["fold1", "fold2", "fold3", "fold4","fold5"],.2)
+    ens = Ensembler(output_path,dataset_name,["fold1", "fold2", "fold3", "fold4","fold5"],.2)
     ens.mean_score_nms()
     ens.save_coco_instances()
 
 def evaluate_dataset():
     global myeval
-    myeval = EvaluateClass(dataset_name, "output_"+ dataset_name, iou_thresh = .2, prob_thresh=0.5,evalsuper=False)
+    myeval = EvaluateClass(dataset_name, output_path, iou_thresh = .2, prob_thresh=0.5,evalsuper=False)
     myeval.evaluate()
-    with open(os.path.join("output_"+ dataset_name,'scalar_dict.json'),"w") as outfile:
+    with open(os.path.join(output_path,'scalar_dict.json'),"w") as outfile:
         json.dump(obj=myeval.summarize_scalars(),fp=outfile)
 
 def create_table():
@@ -92,7 +93,7 @@ def create_table():
     #dataset_table.dfimg['scan'] = dataset_table.dfimg['scan'].astype('int') #depends on what we want scan field to be
 
 def create_binary_masks_tif():
-    pred_file = "output_"+ dataset_name + "/coco_instances_results.json"
+    pred_file = os.path.join(output_path, 'coco_instances_results.json')
     dfimg_dummy = dataset_table.dfimg
     df_unique = dfimg_dummy.ptid.unique()
     vis = OutputVis(dataset_name,prob_thresh = 0.5,pred_mode='file',pred_file=pred_file,has_annotations=has_annotations)
@@ -103,12 +104,12 @@ def create_binary_masks_tif():
         df_pt_OD_ids = df_pt_OD.index.values
         df_pt_OS_ids = df_pt_OS.index.values
         if (len(df_pt_OD.index) > 0):
-            vis.output_masks_to_tiff(df_pt_OD_ids, df_unique[scan], 'OD')
+            vis.output_masks_to_tiff(output_path, df_pt_OD_ids, df_unique[scan], 'OD')
         if (len(df_pt_OS.index) > 0):
-            vis.output_masks_to_tiff(df_pt_OS_ids, df_unique[scan], 'OS')
+            vis.output_masks_to_tiff(output_path, df_pt_OS_ids, df_unique[scan], 'OS')
 
 def create_binary_masks_overlay_tif():
-    pred_file = "output_"+ dataset_name + "/coco_instances_results.json"
+    pred_file = os.path.join(output_path, 'coco_instances_results.json')
     dfimg_dummy = dataset_table.dfimg
     df_unique = dfimg_dummy.ptid.unique()
     vis = OutputVis(dataset_name,prob_thresh = 0.5,pred_mode='file',pred_file=pred_file,has_annotations=has_annotations)
@@ -119,12 +120,12 @@ def create_binary_masks_overlay_tif():
         df_pt_OD_ids = df_pt_OD.index.values
         df_pt_OS_ids = df_pt_OS.index.values
         if (len(df_pt_OD.index) > 0):
-            vis.output_overlay_masks_to_tiff(df_pt_OD_ids, df_unique[scan], 'OD')
+            vis.output_overlay_masks_to_tiff(output_path, df_pt_OD_ids, df_unique[scan], 'OD')
         if (len(df_pt_OS.index) > 0):
-            vis.output_overlay_masks_to_tiff(df_pt_OS_ids, df_unique[scan], 'OS')
+            vis.output_overlay_masks_to_tiff(output_path, df_pt_OS_ids, df_unique[scan], 'OS')
 
 def create_instance_masks_overlay_tif():
-    pred_file = "output_"+ dataset_name + "/coco_instances_results.json"
+    pred_file = os.path.join(output_path, 'coco_instances_results.json')
     dfimg_dummy = dataset_table.dfimg
     df_unique = dfimg_dummy.ptid.unique()
     vis = OutputVis(dataset_name,prob_thresh = 0.5,pred_mode='file',pred_file=pred_file,has_annotations=has_annotations)
@@ -135,12 +136,12 @@ def create_instance_masks_overlay_tif():
         df_pt_OD_ids = df_pt_OD.index.values
         df_pt_OS_ids = df_pt_OS.index.values
         if (len(df_pt_OD.index) > 0):
-            vis.output_instances_masks_to_tiff(df_pt_OD_ids, df_unique[scan], 'OD')
+            vis.output_instances_masks_to_tiff(output_path, df_pt_OD_ids, df_unique[scan], 'OD')
         if (len(df_pt_OS.index) > 0):
-            vis.output_instances_masks_to_tiff(df_pt_OS_ids, df_unique[scan], 'OS')
+            vis.output_instances_masks_to_tiff(output_path, df_pt_OS_ids, df_unique[scan], 'OS')
 
 def create_tif_output(mode = None):
-    pred_file = "output_"+ dataset_name + "/coco_instances_results.json"
+    pred_file = output_path + "/coco_instances_results.json"
     dfimg_dummy = dataset_table.dfimg
     df_unique = dfimg_dummy.ptid.unique()
     vis = OutputVis(dataset_name,prob_thresh = 0.5,pred_mode='file',pred_file=pred_file,has_annotations=has_annotations)
@@ -152,20 +153,20 @@ def create_tif_output(mode = None):
         df_pt_OS_ids = df_pt_OS.index.values
         if (len(df_pt_OD.index) > 0):
             if (mode == 'bm'):
-                vis.output_masks_to_tiff(df_pt_OD_ids, df_unique[scan], 'OD')
+                vis.output_masks_to_tiff(output_path, df_pt_OD_ids, df_unique[scan], 'OD')
             elif (mode == 'bm-o'):
-                vis.output_overlay_masks_to_tiff(df_pt_OD_ids, df_unique[scan], 'OD')
+                vis.output_overlay_masks_to_tiff(output_path, df_pt_OD_ids, df_unique[scan], 'OD')
             elif (mode == 'im'):
-                vis.output_instances_masks_to_tiff(df_pt_OD_ids, df_unique[scan], 'OD')
+                vis.output_instances_masks_to_tiff(output_path, df_pt_OD_ids, df_unique[scan], 'OD')
             else:
                 print("No output mode selected!")
         if (len(df_pt_OS.index) > 0):
             if (mode == 'bm'):
-                vis.output_masks_to_tiff(df_pt_OS_ids, df_unique[scan], 'OS')
+                vis.output_masks_to_tiff(output_path, df_pt_OS_ids, df_unique[scan], 'OS')
             elif (mode == 'bm-o'):
-                vis.output_overlay_masks_to_tiff(df_pt_OS_ids, df_unique[scan], 'OS')
+                vis.output_overlay_masks_to_tiff(output_path, df_pt_OS_ids, df_unique[scan], 'OS')
             elif (mode == 'im'):
-                vis.output_instances_masks_to_tiff(df_pt_OS_ids, df_unique[scan], 'OS')
+                vis.output_instances_masks_to_tiff(output_path, df_pt_OS_ids, df_unique[scan], 'OS')
             else:
                 print("No output mode selected!")
 def create_dfpts():
@@ -173,7 +174,7 @@ def create_dfpts():
         create_table()
     dfpts = dataset_table.dfpts.sort_values(by=['dt_instances'],ascending=False)
     html_str = dfpts.style.format('{:.0f}').set_table_styles(styles).render()
-    html_file = open(os.path.join('output_'+ dataset_name + '/dfpts_'+dataset_name+'.html'),'w')
+    html_file = open(os.path.join(output_path, 'dfpts_'+dataset_name+'.html'),'w')
     html_file.write(html_str)
     html_file.close()
 
@@ -182,14 +183,15 @@ def create_dfimg():
         create_table()
     dfimg = dataset_table.dfimg.sort_index()
     html_str = dfimg.style.set_table_styles(styles).render()
-    html_file = open(os.path.join('output_'+ dataset_name + '/dfimg_'+dataset_name+'.html'),'w')
+    html_file = open(os.path.join(output_path, 'dfimg_'+dataset_name+'.html'),'w')
     html_file.write(html_str)
     html_file.close()
 
 def main():
     parser = argparse.ArgumentParser(description='Run the detectron2 pipeline.')
     parser.add_argument('name', metavar = 'N', help='The name of your dataset.')
-    parser.add_argument('csv', metavar = 'P', help='The path to the input dataset .csv file.'  )
+    parser.add_argument('csv', metavar = 'I', help='The path to the input dataset .csv file.'  )
+    parser.add_argument('out', metavar = 'O', help='The path to the folder where outputs will be stored.')
     parser.add_argument('--mask', action ='store_true', help= 'If your data comes with annotations or masks.')
     parser.add_argument('--bm', action ='store_true', help='Output binary mask tif files.')
     parser.add_argument('--bmo', action ='store_true', help='Output binary mask overlay tif files.')
@@ -199,9 +201,14 @@ def main():
     args = parser.parse_args()
     global has_annotations
     global dataset_name
+    global output_path
     has_annotations = args.mask
     dataset_name = args.name
     data.inputcsv = args.csv
+    output_path = args.out
+    if not os.path.isdir(output_path):
+        print("Output dir does not exist! Making output dir...")
+        os.mkdir(output_path)
     print("Has annotations: ", has_annotations)
     print("Processing input...")
     process_input(has_annotations = has_annotations)
@@ -232,55 +239,55 @@ def main():
         create_dfimg()
     print("Done!")
 
-def main_alt():
-    parser = argparse.ArgumentParser(description='Run the detectron2 pipeline.')
-    parser.add_argument('root', metavar = 'P', help='The path of the folder containing your data folder and the extraction folder.')
-    parser.add_argument('data', metavar = 'D', help='The path of the data folder containing your .vol files.')
-    parser.add_argument('extracted', metavar = 'E', help='The path of the extraction folder that will contain your extracted files.')
-    parser.add_argument('name', metavar = 'N', help='The name of your dataset.')
-    parser.add_argument('--mask', action ='store_true', help= 'If your data comes with annotations or masks.')
-    parser.add_argument('--bm', action ='store_true', help='Output binary mask tif files.')
-    parser.add_argument('--bmo', action ='store_true', help='Output binary mask overlay tif files.')
-    parser.add_argument('--im', action ='store_true', help='Output instance mask overlay tif files.')
-    parser.add_argument('--ptid', action ='store_true', help='Output a dataset html indexed by patient ids.')
-    parser.add_argument('--imgid', action ='store_true', help='Output a dataset html indexed by image ids.')
-    args = parser.parse_args()
-    global has_annotations
-    global dataset_name
-    has_annotations = args.mask
-    dataset_name = args.name
-    data.rpath= args.root #root path for files
-    data.dirtoextract = args.data #extracted from
-    data.filedir = args.extracted #split from
-    print("Has annotations: ", has_annotations)
-    print("Processing input...")
-    process_input(has_annotations = has_annotations)
-    print("Configuring model...")
-    configure_model()
-    print("Registering dataset...")
-    register_dataset()
-    print("Running inference...")
-    run_prediction(cfg,dataset_name)
-    print("Running ensemble...")
-    run_ensemble()
-    print("Evaluating dataset...")
-    evaluate_dataset()
-    print("Creating dataset table...")
-    create_table()
-    if args.bm:
-        print("Creating binary masks tif (no overlay)...")
-        create_tif_output(mode = 'bm')
-    if args.bmo:
-        print("Creating binary masks tif (with overlay)...")
-        create_tif_output(mode = 'bm-o')
-    if args.im:
-        print("Creating instances masks tif (with overlay)...")
-        create_tif_output(mode = 'im')
-    if args.ptid:
-        create_dfpts()
-    if args.imgid:
-        create_dfimg()
-    print("Done!")
+# def main_alt():
+#     parser = argparse.ArgumentParser(description='Run the detectron2 pipeline.')
+#     parser.add_argument('root', metavar = 'P', help='The path of the folder containing your data folder and the extraction folder.')
+#     parser.add_argument('data', metavar = 'D', help='The path of the data folder containing your .vol files.')
+#     parser.add_argument('extracted', metavar = 'E', help='The path of the extraction folder that will contain your extracted files.')
+#     parser.add_argument('name', metavar = 'N', help='The name of your dataset.')
+#     parser.add_argument('--mask', action ='store_true', help= 'If your data comes with annotations or masks.')
+#     parser.add_argument('--bm', action ='store_true', help='Output binary mask tif files.')
+#     parser.add_argument('--bmo', action ='store_true', help='Output binary mask overlay tif files.')
+#     parser.add_argument('--im', action ='store_true', help='Output instance mask overlay tif files.')
+#     parser.add_argument('--ptid', action ='store_true', help='Output a dataset html indexed by patient ids.')
+#     parser.add_argument('--imgid', action ='store_true', help='Output a dataset html indexed by image ids.')
+#     args = parser.parse_args()
+#     global has_annotations
+#     global dataset_name
+#     has_annotations = args.mask
+#     dataset_name = args.name
+#     data.rpath= args.root #root path for files
+#     data.dirtoextract = args.data #extracted from
+#     data.filedir = args.extracted #split from
+#     print("Has annotations: ", has_annotations)
+#     print("Processing input...")
+#     process_input(has_annotations = has_annotations)
+#     print("Configuring model...")
+#     configure_model()
+#     print("Registering dataset...")
+#     register_dataset()
+#     print("Running inference...")
+#     run_prediction(cfg,dataset_name)
+#     print("Running ensemble...")
+#     run_ensemble()
+#     print("Evaluating dataset...")
+#     evaluate_dataset()
+#     print("Creating dataset table...")
+#     create_table()
+#     if args.bm:
+#         print("Creating binary masks tif (no overlay)...")
+#         create_tif_output(mode = 'bm')
+#     if args.bmo:
+#         print("Creating binary masks tif (with overlay)...")
+#         create_tif_output(mode = 'bm-o')
+#     if args.im:
+#         print("Creating instances masks tif (with overlay)...")
+#         create_tif_output(mode = 'im')
+#     if args.ptid:
+#         create_dfpts()
+#     if args.imgid:
+#         create_dfimg()
+#     print("Done!")
 
 if __name__ == "__main__":
     main()
