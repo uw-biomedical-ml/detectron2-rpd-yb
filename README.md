@@ -32,4 +32,23 @@ After the bat file finishes, the setup is complete. You can now run the model.
 
 Step 3) Running Detectron2-RPD
 
-To run the model, run "run_program.bat"
+To run the model, run Anaconda Prompt (miniconda3), which can be found on your computer using the Windows Search function.
+
+In the prompt window, navigate to the detectron2-rpd-yb folder (using cd).
+
+Once inside the folder, run the following command to run the model:
+
+python run_program.py %input% %output% --bm --bmo --im --ptid --imgid
+
+Required flags:
+%input% = path to the input .csv file
+%output% = path to the folder where outputs will be stored (NOTE: Folder must already exist!)
+
+Optional flags:
+bm = binary mask
+bmo = binary mask overlay
+im = instance mask overlay
+ptid = dataset html (by ptid)
+imgid = dataset html (by imgid)
+
+
