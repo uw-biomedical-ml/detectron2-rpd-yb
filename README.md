@@ -46,9 +46,11 @@ Required flags:
 
 %input% = path to the input .csv file
 
-%output% = path to the folder where outputs will be stored (NOTE: Folder must already exist!)
+%output% = path to the folder where outputs will be stored (NOTE: If the folder does not exist, it will be made!)
 
 Optional flags:
+
+mask = if your data comes with annotations or masks
 
 bm = binary mask
 
