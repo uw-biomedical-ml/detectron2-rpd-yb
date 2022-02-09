@@ -47,6 +47,7 @@ Required flags:
 %output% = path to the folder where outputs will be stored (NOTE: Folder must already exist!)
 
 Optional flags:
+
 bm = binary mask
 
 bmo = binary mask overlay
