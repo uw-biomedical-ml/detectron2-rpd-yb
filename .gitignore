@@ -20,3 +20,4 @@ bat files/detectron2
 Test Set_extracted/
 *.png
 *.tif
+*.pth

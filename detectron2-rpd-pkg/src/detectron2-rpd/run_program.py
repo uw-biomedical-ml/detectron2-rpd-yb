@@ -61,7 +61,9 @@ def run_prediction(cfg,dataset_name):
     myloader = build_detection_test_loader(cfg,dataset_name) 
     myeval = COCOEvaluator(dataset_name,tasks={'bbox','segm'},output_dir =output_path) #produces _coco_format.json when initialized
     for mdl in ("fold1", "fold2", "fold3", "fold4","fold5"):
-        model_weights_path = "/data/amd-data/cera-rpd/detectron2-rpd/output_valid_"+ mdl +"/model_final.pth"
+        moddir = os.path.dirname(os.path.realpath(__file__))
+        name = mdl + "_model_final.pth"
+        model_weights_path = os.path.join(moddir, name)
         DetectionCheckpointer(model).load(model_weights_path);  # load a file, usually from cfg.MODEL.WEIGHTS
         model.eval() #set model in evaluation mode
         myeval.reset()

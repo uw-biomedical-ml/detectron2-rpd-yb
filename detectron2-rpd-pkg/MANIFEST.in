@@ -1,0 +1,1 @@
+include src/detectron2-rpd/fold1_model_final.pth src/detectron2-rpd/fold2_model_final.pth src/detectron2-rpd/fold3_model_final.pth src/detectron2-rpd/fold4_model_final.pth src/detectron2-rpd/fold5_model_final.pth
