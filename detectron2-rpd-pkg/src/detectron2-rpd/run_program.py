@@ -46,7 +46,10 @@ def process_input(has_annotations=False): # Processes input .vol files and creat
 def configure_model():
     global cfg
     cfg = get_cfg()
-    cfg.merge_from_file('configs/working.yaml')
+    moddir = os.path.dirname(os.path.realpath(__file__))
+    name = 'working.yaml'
+    cfg_path = os.path.join(moddir, name)
+    cfg.merge_from_file(cfg_path)
 
 def register_dataset():
     for name in [dataset_name]:
@@ -143,7 +146,7 @@ def create_instance_masks_overlay_tif():
             vis.output_instances_masks_to_tiff(output_path, df_pt_OS_ids, df_unique[scan], 'OS')
 
 def create_tif_output(mode = None):
-    pred_file = output_path + "/coco_instances_results.json"
+    pred_file = os.path.join(output_path, 'coco_instances_results.json')
     dfimg_dummy = dataset_table.dfimg
     df_unique = dfimg_dummy.ptid.unique()
     vis = OutputVis(dataset_name,prob_thresh = 0.5,pred_mode='file',pred_file=pred_file,has_annotations=has_annotations)
@@ -189,7 +192,7 @@ def create_dfimg():
     html_file.write(html_str)
     html_file.close()
 
-def main():
+def main(args):
     parser = argparse.ArgumentParser(description='Run the detectron2 pipeline.')
     parser.add_argument('name', metavar = 'N', help='The name of your dataset.')
     parser.add_argument('csv', metavar = 'I', help='The path to the input dataset .csv file.'  )
@@ -200,7 +203,7 @@ def main():
     parser.add_argument('--im', action ='store_true', help='Output instance mask overlay tif files.')
     parser.add_argument('--ptid', action ='store_true', help='Output a dataset html indexed by patient ids.')
     parser.add_argument('--imgid', action ='store_true', help='Output a dataset html indexed by image ids.')
-    args = parser.parse_args()
+    args = parser.parse_args(args)
     global has_annotations
     global dataset_name
     global output_path
@@ -292,5 +295,5 @@ def main():
 #     print("Done!")
 
 if __name__ == "__main__":
-    main()
+    main(sys.argv[1:])
     # main_alt()

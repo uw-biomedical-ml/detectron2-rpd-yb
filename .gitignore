@@ -21,3 +21,4 @@ Test Set_extracted/
 *.png
 *.tif
 *.pth
+detectron2-rpd-pkg/dist
