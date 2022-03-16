@@ -21,6 +21,8 @@ import os
 import sys
 from table_styles import styles
 import argparse
+import urllib.request
+import zipfile
 
 os.environ["CUDA_DEVICE_ORDER"]="PCI_BUS_ID"
 os.environ["CUDA_VISIBLE_DEVICES"] = "0"
@@ -64,10 +66,16 @@ def run_prediction(cfg,dataset_name):
     myloader = build_detection_test_loader(cfg,dataset_name) 
     myeval = COCOEvaluator(dataset_name,tasks={'bbox','segm'},output_dir =output_path) #produces _coco_format.json when initialized
     for mdl in ("fold1", "fold2", "fold3", "fold4","fold5"):
-        moddir = os.path.dirname(os.path.realpath(__file__))
-        name = mdl + "_model_final.pth"
-        model_weights_path = os.path.join(moddir, name)
-        DetectionCheckpointer(model).load(model_weights_path);  # load a file, usually from cfg.MODEL.WEIGHTS
+        extract_directory = 'models_t'
+        if not os.path.isdir(extract_directory):
+            os.mkdir(extract_directory)
+            url = 'https://s3.us-west-2.amazonaws.com/comp.ophthalmology.uw.edu/models.zip'
+            path_to_zip_file, headers = urllib.request.urlretrieve(url)
+            with zipfile.ZipFile(path_to_zip_file, 'r') as zip_ref:
+                zip_ref.extractall(extract_directory)
+        model = mdl + "_model_final.pth"
+        model_weights_path = os.path.join(extract_directory, model)
+        DetectionCheckpointer(model).load(model_weights_path) # load a file, usually from cfg.MODEL.WEIGHTS
         model.eval() #set model in evaluation mode
         myeval.reset()
         output_dir = os.path.join(output_path, mdl)
