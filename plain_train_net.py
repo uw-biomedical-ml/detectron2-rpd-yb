@@ -60,7 +60,7 @@ warnings.filterwarnings("ignore",category=UserWarning)
 
 def grab_dataset(name):
     def f():
-        return pickle.load( open( "datasets/"+name+"_refined.pk", "rb" ) )
+        return pickle.load( open( "datasets/"+name+".pk", "rb" ) )
     return f   
 
 import detectron2
@@ -113,6 +113,8 @@ class OutputVis():
             sys.exit('draw_mode must be one of the following: {}'.format(permitted_draw_modes))
         self.draw_mode = draw_mode
         self.font_size = 16 #28 for ARVO
+        self.annotation_color = 'r'
+        self.scale = 3.0
 
     def get_ori_image(self,ImgId):
         """[summary]
@@ -125,7 +127,7 @@ class OutputVis():
         """
         dat = self.get_gt_image_data(ImgId) #gt
         im = cv2.imread(dat['file_name']) #input to model
-        v_gt = Visualizer(im, MetadataCatalog.get(self.dataset_name), scale=3.0)
+        v_gt = Visualizer(im, MetadataCatalog.get(self.dataset_name), scale=self.scale)
         result_image = v_gt.output.get_image() #get original image
         img = Image.fromarray(result_image)
         return img
@@ -153,12 +155,12 @@ class OutputVis():
         Returns:
             PIL.Image: The resulting original image overlayed with ground truth instances.
         """
-        v_gt = Visualizer(im, MetadataCatalog.get(self.dataset_name), scale=3.0) 
+        v_gt = Visualizer(im, MetadataCatalog.get(self.dataset_name), scale=self.scale) 
         if (self.has_annotations): #ground truth boxes and masks
             segs = [ddict['segmentation'] for ddict in dat['annotations']]
             if self.draw_mode is 'bw':
                 BBoxes = None
-                assigned_colors = ['r']*len(segs)
+                assigned_colors = [self.annotation_color]*len(segs)
             else: #default behavior
                 bboxes = [ddict['bbox'] for ddict in dat['annotations']]
                 BBoxes = detectron2.structures.Boxes(bboxes)
@@ -183,7 +185,7 @@ class OutputVis():
         Returns:
             PIL.Image: The resulting original image overlayed with model-predicted instances.
         """
-        v_dt = Visualizer(im, MetadataCatalog.get(self.dataset_name), scale=3.0)
+        v_dt = Visualizer(im, MetadataCatalog.get(self.dataset_name), scale=self.scale)
         v_dt._default_font_size = self.font_size
 
         #get predictions from model or file
@@ -193,7 +195,8 @@ class OutputVis():
             outputs = self.get_outputs_from_file(ImgId,(dat['height'],dat['width']))  
         outputs = outputs[outputs.scores>self.prob_thresh] #apply probability threshold to instances
         if self.draw_mode is 'bw':
-            result_model = v_dt.overlay_instances(masks=outputs.pred_masks,assigned_colors=['r']*len(outputs), alpha=1.0).get_image()
+            result_model = v_dt.overlay_instances(masks=outputs.pred_masks,assigned_colors=[self.annotation_color]*len(outputs), alpha=1.0).get_image()
+            # result_model = v_dt.overlay_instances(masks=outputs.pred_masks,assigned_colors=[self.annotation_color]*len(outputs), alpha=1.0).get_image()
         else: #default behavior
             result_model = v_dt.draw_instance_predictions(outputs).get_image()    
         img_model = Image.fromarray(result_model)
@@ -285,7 +288,7 @@ class OutputVis():
             for imgid in tqdm(ImgIds):
                 img, img_model = self.get_image(imgid)
                 #pdb.set_trace()
-                crop_range = self.height_crop_range(np.array(img.convert('L')),height_target=256*3)
+                crop_range = self.height_crop_range(np.array(img.convert('L')),height_target=256*self.scale)
                 img = np.array(img)[crop_range]
                 img_model = np.array(img_model)[crop_range]
  
@@ -312,7 +315,7 @@ class OutputVis():
             outname (str): Path name to save to.
         """
         if len(imgs) > 1:
-            imgs[0].save(outname, tags = "", compression = "tiff_deflate", save_all=True, append_images=imgs[1:])
+            imgs[0].save(outname,dpi=(400,400), tags = "", compression = None, save_all=True, append_images=imgs[1:])
         else:
             imgs[0].save(outname) 
 
@@ -329,7 +332,7 @@ class OutputVis():
             imgs.append(img_ori)
         self.save_imgarr_to_tiff(imgs,outname)
 
-    def output_pred_to_tiff(self,ImgIds,outname):
+    def output_pred_to_tiff(self,ImgIds,outname,pred_only=False):
         """Save list of images overlayed with the model predictions in stacked tiff format.     
 
         Args:
@@ -339,10 +342,34 @@ class OutputVis():
         imgs = [] 
         for imgid in tqdm(ImgIds):
             dat = self.get_gt_image_data(imgid) #gt
-            im = cv2.imread(dat['file_name']) #input to model
+            if pred_only:
+                im = np.zeros((dat['height'],dat['width'],3)) #blank image for overlay
+                assert self._mode == 'file', 'pred_mode must be "file" when pred_only flage is set to True.' #fix this later
+            else:    
+                im = cv2.imread(dat['file_name']) #input to model
             img_dt = self.produce_model_image(imgid,dat,im)
             imgs.append(img_dt)
         self.save_imgarr_to_tiff(imgs,outname)
+        return imgs
+
+    def output_pred_to_list(self,ImgIds,pred_only=False):
+        """Return list of images overlayed with the model predictions.     
+
+        Args:
+            ImgIds (list(str)): A list of image_ids for images to save.
+            outname (str): Path name to save to.
+        """
+        imgs = [] 
+        for imgid in tqdm(ImgIds):
+            dat = self.get_gt_image_data(imgid) #gt
+            if pred_only:
+                im = np.zeros((dat['height'],dat['width'],3)) #blank image for overlay
+                assert self._mode == 'file', 'pred_mode must be "file" when pred_only flage is set to True.' #fix this later
+            else:    
+                im = cv2.imread(dat['file_name']) #input to model
+            img_dt = self.produce_model_image(imgid,dat,im)
+            imgs.append(img_dt)
+        return imgs
 
     def output_all_to_tiff(self,ImgIds,outname):
         """Save list of images (original, ground truth overlay, and model prediction overlay) to stacked tiff format. 
@@ -355,7 +382,7 @@ class OutputVis():
         for imgid in tqdm(ImgIds):
             img_gt, img_dt = self.get_image(imgid)
             img_ori = self.get_ori_image(imgid)
-            hcrange = list(self.height_crop_range(np.array(img_ori.convert('L')),height_target=256*3))
+            hcrange = list(self.height_crop_range(np.array(img_ori.convert('L')),height_target=256*self.scale))
             img_result = Image.fromarray(np.concatenate((np.array(img_ori.convert('RGB'))[hcrange,:],np.array(img_gt)[hcrange,:],np.array(img_dt)[hcrange])))
             imgs.append(img_result)
         self.save_imgarr_to_tiff(imgs,outname)
@@ -451,66 +478,66 @@ class OutputVis():
         ax[1].set_title(str(name) + ' GT')
         ax[1].set_aspect('equal')
         return fig,ax                    
-#########################################################################################################
-    def output_masks_to_tiff(self, ImgIds, ptid, eye):
-        imgs = []
-        for index in range(len(ImgIds)):
-            gt_data = next(item for item in self.data if (item['image_id'] == ImgIds[index]))   
-            dat = gt_data
-            blank = Image.new('RGB',(dat['width'],dat['height'])) #default black image
-            v_dt = Visualizer(blank, MetadataCatalog.get(self.dataset_name), scale=3.0)
-            v_dt._default_font_size = 14
-            outputs = self.get_outputs_from_file(ImgIds[index],(dat['height'],dat['width']))
-            outputs = outputs[outputs.scores>self.prob_thresh]
-            result_model = v_dt.overlay_instances(masks=outputs.pred_masks,assigned_colors=['w']*len(outputs), alpha=1.0).get_image()
-            pil_model = Image.fromarray(result_model)
-            imgs.append(pil_model)
-        if not os.path.isdir('extracted_test'):
-            os.mkdir('extracted_test')
-        if len(imgs) > 1:
-            imgs[0].save("extracted_test/" + str(ptid) + "_" + str(eye) + "-bmasks.tif", tags = "test", compression = "tiff_deflate", save_all=True, append_images=imgs[1:])
-        else:
-            imgs[0].save("extracted_test/" + str(ptid) + "_" + str(eye) + "-bmasks.png")
+# #########################################################################################################
+#     def output_masks_to_tiff(self, ImgIds, ptid, eye):
+#         imgs = []
+#         for index in range(len(ImgIds)):
+#             gt_data = next(item for item in self.data if (item['image_id'] == ImgIds[index]))   
+#             dat = gt_data
+#             blank = Image.new('RGB',(dat['width'],dat['height'])) #default black image
+#             v_dt = Visualizer(blank, MetadataCatalog.get(self.dataset_name), scale=self.scale)
+#             v_dt._default_font_size = 14
+#             outputs = self.get_outputs_from_file(ImgIds[index],(dat['height'],dat['width']))
+#             outputs = outputs[outputs.scores>self.prob_thresh]
+#             result_model = v_dt.overlay_instances(masks=outputs.pred_masks,assigned_colors=['w']*len(outputs), alpha=1.0).get_image()
+#             pil_model = Image.fromarray(result_model)
+#             imgs.append(pil_model)
+#         if not os.path.isdir('extracted_test'):
+#             os.mkdir('extracted_test')
+#         if len(imgs) > 1:
+#             imgs[0].save("extracted_test/" + str(ptid) + "_" + str(eye) + "-bmasks.tif", tags = "test", compression = "tiff_deflate", save_all=True, append_images=imgs[1:])
+#         else:
+#             imgs[0].save("extracted_test/" + str(ptid) + "_" + str(eye) + "-bmasks.png")
     
-    def output_overlay_masks_to_tiff(self, ImgIds, ptid, eye):
-        imgs = []
-        for index in range(len(ImgIds)):
-            gt_data = next(item for item in self.data if (item['image_id'] == ImgIds[index]))   
-            dat = gt_data
-            im = cv2.imread(dat['file_name']) #input to model
-            v_dt = Visualizer(im, MetadataCatalog.get(self.dataset_name), scale=3.0)
-            v_dt._default_font_size = 14
-            outputs = self.get_outputs_from_file(ImgIds[index],(dat['height'],dat['width']))
-            outputs = outputs[outputs.scores>self.prob_thresh]
-            result_model = v_dt.overlay_instances(masks=outputs.pred_masks,assigned_colors=['r']*len(outputs), alpha=1.0).get_image()
-            pil_model = Image.fromarray(result_model)
-            imgs.append(pil_model)
-        if not os.path.isdir('extracted_test_overlays'):
-            os.mkdir('extracted_test_overlays')
-        if len(imgs) > 1:
-            imgs[0].save("extracted_test_overlays/" + str(ptid) + "_" + str(eye) + "-bmasks_overlay.tif", tags = "test", compression = "tiff_deflate", save_all=True, append_images=imgs[1:])
-        else:
-            imgs[0].save("extracted_test_overlays/" + str(ptid) + "_" + str(eye) + "-bmasks_overlay.png")
+#     def output_overlay_masks_to_tiff(self, ImgIds, ptid, eye):
+#         imgs = []
+#         for index in range(len(ImgIds)):
+#             gt_data = next(item for item in self.data if (item['image_id'] == ImgIds[index]))   
+#             dat = gt_data
+#             im = cv2.imread(dat['file_name']) #input to model
+#             v_dt = Visualizer(im, MetadataCatalog.get(self.dataset_name), scale=self.scale)
+#             v_dt._default_font_size = 14
+#             outputs = self.get_outputs_from_file(ImgIds[index],(dat['height'],dat['width']))
+#             outputs = outputs[outputs.scores>self.prob_thresh]
+#             result_model = v_dt.overlay_instances(masks=outputs.pred_masks,assigned_colors=[self.annotation_color]*len(outputs), alpha=1.0).get_image()
+#             pil_model = Image.fromarray(result_model)
+#             imgs.append(pil_model)
+#         if not os.path.isdir('extracted_test_overlays'):
+#             os.mkdir('extracted_test_overlays')
+#         if len(imgs) > 1:
+#             imgs[0].save("extracted_test_overlays/" + str(ptid) + "_" + str(eye) + "-bmasks_overlay.tif", tags = "test", compression = "tiff_deflate", save_all=True, append_images=imgs[1:])
+#         else:
+#             imgs[0].save("extracted_test_overlays/" + str(ptid) + "_" + str(eye) + "-bmasks_overlay.png")
 
-    def output_instances_masks_to_tiff(self, ImgIds, ptid, eye):
-        imgs = []
-        for index in range(len(ImgIds)):
-            gt_data = next(item for item in self.data if (item['image_id'] == ImgIds[index]))   
-            dat = gt_data
-            im = cv2.imread(dat['file_name']) #input to model
-            v_dt = Visualizer(im, MetadataCatalog.get(self.dataset_name), scale=3.0)
-            v_dt._default_font_size = 14
-            outputs = self.get_outputs_from_file(ImgIds[index],(dat['height'],dat['width']))
-            outputs = outputs[outputs.scores>self.prob_thresh]
-            result_model = v_dt.draw_instance_predictions(outputs).get_image()
-            pil_model = Image.fromarray(result_model)
-            imgs.append(pil_model)
-        if not os.path.isdir('instances_mask_overlays'):
-            os.mkdir('instances_mask_overlays')
-        if len(imgs) > 1:
-            imgs[0].save("instances_mask_overlays/" + str(ptid) + "_" + str(eye) + "-ipmasks_overlay.tif", tags = "test", compression = "tiff_deflate", save_all=True, append_images=imgs[1:])
-        else:
-            imgs[0].save("instances_mask_overlays/" + str(ptid) + "_" + str(eye) + "-ipmasks_overlay.png")
+#     def output_instances_masks_to_tiff(self, ImgIds, ptid, eye):
+#         imgs = []
+#         for index in range(len(ImgIds)):
+#             gt_data = next(item for item in self.data if (item['image_id'] == ImgIds[index]))   
+#             dat = gt_data
+#             im = cv2.imread(dat['file_name']) #input to model
+#             v_dt = Visualizer(im, MetadataCatalog.get(self.dataset_name), scale=self.scale)
+#             v_dt._default_font_size = 14
+#             outputs = self.get_outputs_from_file(ImgIds[index],(dat['height'],dat['width']))
+#             outputs = outputs[outputs.scores>self.prob_thresh]
+#             result_model = v_dt.draw_instance_predictions(outputs).get_image()
+#             pil_model = Image.fromarray(result_model)
+#             imgs.append(pil_model)
+#         if not os.path.isdir('instances_mask_overlays'):
+#             os.mkdir('instances_mask_overlays')
+#         if len(imgs) > 1:
+#             imgs[0].save("instances_mask_overlays/" + str(ptid) + "_" + str(eye) + "-ipmasks_overlay.tif", tags = "test", compression = "tiff_deflate", save_all=True, append_images=imgs[1:])
+#         else:
+#             imgs[0].save("instances_mask_overlays/" + str(ptid) + "_" + str(eye) + "-ipmasks_overlay.png")
 
 #########################################################################################################
 
@@ -746,8 +773,8 @@ class CreatePlotsRPD():
                 
             dat = [len(instGt),np.array(instGt).sum(),np.array(xprojGt).sum(),len(instDt),np.array(instDt).sum(),np.array(xprojDt).sum()]
             df.loc[key] = dat
-            
-        newdf = pd.DataFrame([idx.rsplit('.',1)[0].split('_') for idx in df.index],columns=['volID','scan'],index = df.index)
+    
+        newdf = pd.DataFrame([idx.rsplit('.',1)[0].rsplit('_',1) for idx in df.index],columns=['volID','scan'],index = df.index)
         df = df.merge(newdf,how='inner',left_index=True,right_index=True)
         return cls(df)
     

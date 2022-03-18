@@ -382,7 +382,7 @@ def rpd_data(df, grp = "train",data_has_ann=True):
     with PdfPages(outname) as pdf:
         for index,row in tqdm(df.iterrows()):
             fn,segfn = row[['img_path','msk_path']]
-            imageid = row['instance'] + '_{:03}'.format(row['slicei'])
+            imageid = row['volID'] + '_{:03}'.format(row['slicei']) #possibly replace 'instance' with 'volID'
         #for fn,segfn in tqdm(df[['img_path','msk_path']].values):
             #imageid = fn.split("/")[-1]
             im = cv2.imread(fn)
