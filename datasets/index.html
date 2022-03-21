@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>OCT grading</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@0.9.2/css/bulma.min.css">
+  </head>
+  <body>
+  <section class="section">
+    <div class="container">
+      <user>: <remaining> of <total> remaining
+      <br/>
+      ######
+      <br/>
+      <grades>
+      <br/>
+      <form action="<action>" method="POST">
+            <input type="hidden" name="method" value="record">
+            <input type="hidden" name="user" value="<user>">
+            <input type="hidden" name="volid" value="<volid>">
+            <!-- Dx:
+            <label class="checkbox"> <input type="checkbox" name="dx_norm"> Normal </label>
+            <label class="checkbox"> <input type="checkbox" name="dx_AMD"> AMD </label>
+            <label class="checkbox"> <input type="checkbox" name="dx_DME"> DME </label>
+            <label class="checkbox"> <input type="checkbox" name="dx_CME"> CME </label>
+            <label class="checkbox"> <input type="checkbox" name="dx_RVO"> RVO </label>
+            <label class="checkbox"> <input type="checkbox" name="dx_ERM"> ERM </label>
+            <label class="checkbox"> <input type="checkbox" name="dx_Myopia"> Myopic Degeneration </label>
+            <label class="checkbox"> <input type="checkbox" name="dx_VMT"> VMT </label>
+            <label class="checkbox"> <input type="checkbox" name="dx_FTMH"> FTMH </label>
+            <label class="checkbox"> <input type="checkbox" name="dx_LHEP"> LHEP</label>
+            <label class="checkbox"> <input type="checkbox" name="dx_TRD"> TRD </label>
+            <label class="checkbox"> <input type="checkbox" name="dx_CSCR"> CSCR </label>
+            <label class="checkbox"> <input type="checkbox" name="dx_Dystrophy"> Retinal Dystrophy </label>
+            <label class="checkbox"> <input type="checkbox" name="dx_SolarRet"> Solar Retinopathy </label>
+            <label class="checkbox"> <input type="checkbox" name="dx_Lamellar"> LMH </label>
+            <label class="checkbox"> <input type="checkbox" name="dx_RD"> RD </label>
+            <label class="checkbox"> <input type="checkbox" name="dx_RAO"> RAO </label>
+            <label class="checkbox"> <input type="checkbox" name="dx_IRI"> Inner Retinal Ischemia </label>
+            <label class="checkbox"> <input type="checkbox" name="dx_Unable"> Unable </label> -->
+            <br/>
+            Features:
+            <!-- <label class="checkbox"> <input type="checkbox" name="ft_drusen"> Drusen </label>
+            <label class="checkbox"> <input type="checkbox" name="ft_IRF"> IRF </label>
+            <label class="checkbox"> <input type="checkbox" name="ft_SRF"> SRF </label>
+            <label class="checkbox"> <input type="checkbox" name="ft_HEx"> HEx </label>
+            <label class="checkbox"> <input type="checkbox" name="ft_SHRM"> SHRM </label> -->
+            <label class="checkbox"> <input type="checkbox" name="ft_RPD"> RPD </label>
+            <label class="checkbox"> <input type="checkbox" name="ft_noRPD"> No RPD </label>
+            <label class="checkbox"> <input type="checkbox" name="ft_Unable"> Unable </label>
+            <!-- <label class="checkbox"> <input type="checkbox" name="ft_PED"> PED </label>
+            <label class="checkbox"> <input type="checkbox" name="ft_GA"> GA </label>
+            <label class="checkbox"> <input type="checkbox" name="ft_choroidal"> Choroidal Abnl </label>
+            <label class="checkbox"> <input type="checkbox" name="ft_loss"> Outer retina loss </label> -->
+            <br/>
+            <input type="submit"/> (If you don't check anything, you can skip this volume and come back to it later.)
+        </form>
+    </div>
+  </section>
+  </body>
+</html>
