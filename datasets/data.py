@@ -372,7 +372,7 @@ def visualize_breakup(im,binseg,segs,bumps,idx):
     return fig,ax
 
 
-def rpd_data(df, grp = "train",data_has_ann=True):
+def rpd_data(df, grp = "train",data_has_ann=True): #pass a list of filename paths; for each path, take filename as image_id (volID_XXX.png where XXX is scan number) 
     df = df[df.fold==grp]
     dataset = []
     instances = 0

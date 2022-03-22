@@ -74,10 +74,11 @@ class Grading(tornado.web.RequestHandler):
         images = allocts[inext]
         irs = allirs[inext]
         imghtml = ""
-        for fn in images:
-            imghtml += f"<img src='{fn}' width='430' />"
         for fn in irs:
             imghtml += f"<img src='{fn}' width='1000' />"
+        for fn in images:
+            imghtml += f"<img src='{fn}' width='430' />"
+
         with open('index.html') as fin:
             indexstr = fin.read()
         indexstr = indexstr.replace("######", imghtml)
