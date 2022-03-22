@@ -96,7 +96,7 @@ def checkSplits(dataset_list):
     return dfcheck       
 class OutputVis():
 
-    def __init__(self,dataset_name,cfg=None,prob_thresh=0.5,pred_mode='model',pred_file=None,has_annotations=True, draw_mode = 'default'):
+    def __init__(self,dataset_name,cfg=None,prob_thresh=0.5,pred_mode='model',pred_file=None,has_annotations=False, draw_mode = 'default'):
         self.dataset_name = dataset_name
         self.cfg = cfg
         self.prob_thresh = prob_thresh

@@ -22,3 +22,4 @@ Test Set_extracted/
 *.tif
 *.pth
 detectron2-rpd-pkg/dist
+models/

@@ -27,7 +27,6 @@ import zipfile
 os.environ["CUDA_DEVICE_ORDER"]="PCI_BUS_ID"
 os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 
-has_annotations = False
 dataset_name = None
 dpi= 120
 dataset_table = None
@@ -37,12 +36,9 @@ ens = None
 output_path = None
 
 
-def process_input(has_annotations=False): # Processes input .vol files and creates the pk file.
-    data.import_csv()
-    data.extractFiles(masks_exist = has_annotations, name = dataset_name)
-    df = data.createDf().assign(fold = dataset_name) #temporary
-    df_p = data.process_masks(df, mode = 'binary', binary_classes=2)
-    stored_data = data.rpd_data(df_p, grp = dataset_name, data_has_ann = has_annotations)
+def process_input(): # Processes input .vol files and creates the pk file.
+    data.extractFiles(name = dataset_name)
+    stored_data = data.rpd_data(name = dataset_name)
     pickle.dump(stored_data, open(os.path.join(data.script_dir,f"{dataset_name}_refined.pk"), "wb"))
 
 def configure_model():
@@ -73,8 +69,9 @@ def run_prediction(cfg,dataset_name):
             path_to_zip_file, headers = urllib.request.urlretrieve(url)
             with zipfile.ZipFile(path_to_zip_file, 'r') as zip_ref:
                 zip_ref.extractall(extract_directory)
-        model = mdl + "_model_final.pth"
-        model_weights_path = os.path.join(extract_directory, model)
+        file_name = mdl + "_model_final.pth"
+        model_weights_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), extract_directory, file_name)
+        print(model_weights_path)
         DetectionCheckpointer(model).load(model_weights_path) # load a file, usually from cfg.MODEL.WEIGHTS
         model.eval() #set model in evaluation mode
         myeval.reset()
@@ -109,7 +106,7 @@ def create_binary_masks_tif():
     pred_file = os.path.join(output_path, 'coco_instances_results.json')
     dfimg_dummy = dataset_table.dfimg
     df_unique = dfimg_dummy.ptid.unique()
-    vis = OutputVis(dataset_name,prob_thresh = 0.5,pred_mode='file',pred_file=pred_file,has_annotations=has_annotations)
+    vis = OutputVis(dataset_name,prob_thresh = 0.5,pred_mode='file',pred_file=pred_file)
     for scan in range(len(df_unique)):
         df_currentpt = dfimg_dummy.loc[dfimg_dummy['ptid'] == df_unique[scan]]
         df_pt_OD = df_currentpt.loc[df_currentpt['eye'] == 'OD'].sort_values('scan', kind = 'mergesort')
@@ -125,7 +122,7 @@ def create_binary_masks_overlay_tif():
     pred_file = os.path.join(output_path, 'coco_instances_results.json')
     dfimg_dummy = dataset_table.dfimg
     df_unique = dfimg_dummy.ptid.unique()
-    vis = OutputVis(dataset_name,prob_thresh = 0.5,pred_mode='file',pred_file=pred_file,has_annotations=has_annotations)
+    vis = OutputVis(dataset_name,prob_thresh = 0.5,pred_mode='file',pred_file=pred_file)
     for scan in range(len(df_unique)):
         df_currentpt = dfimg_dummy.loc[dfimg_dummy['ptid'] == df_unique[scan]]
         df_pt_OD = df_currentpt.loc[df_currentpt['eye'] == 'OD'].sort_values('scan', kind = 'mergesort')
@@ -141,7 +138,7 @@ def create_instance_masks_overlay_tif():
     pred_file = os.path.join(output_path, 'coco_instances_results.json')
     dfimg_dummy = dataset_table.dfimg
     df_unique = dfimg_dummy.ptid.unique()
-    vis = OutputVis(dataset_name,prob_thresh = 0.5,pred_mode='file',pred_file=pred_file,has_annotations=has_annotations)
+    vis = OutputVis(dataset_name,prob_thresh = 0.5,pred_mode='file',pred_file=pred_file)
     for scan in range(len(df_unique)):
         df_currentpt = dfimg_dummy.loc[dfimg_dummy['ptid'] == df_unique[scan]]
         df_pt_OD = df_currentpt.loc[df_currentpt['eye'] == 'OD'].sort_values('scan', kind = 'mergesort')
@@ -157,7 +154,7 @@ def create_tif_output(mode = None):
     pred_file = os.path.join(output_path, 'coco_instances_results.json')
     dfimg_dummy = dataset_table.dfimg
     df_unique = dfimg_dummy.ptid.unique()
-    vis = OutputVis(dataset_name,prob_thresh = 0.5,pred_mode='file',pred_file=pred_file,has_annotations=has_annotations)
+    vis = OutputVis(dataset_name,prob_thresh = 0.5,pred_mode='file',pred_file=pred_file)
     for scan in range(len(df_unique)):
         df_currentpt = dfimg_dummy.loc[dfimg_dummy['ptid'] == df_unique[scan]]
         df_pt_OD = df_currentpt.loc[df_currentpt['eye'] == 'OD'].sort_values('scan', kind = 'mergesort')
@@ -203,28 +200,25 @@ def create_dfimg():
 def main(args):
     parser = argparse.ArgumentParser(description='Run the detectron2 pipeline.')
     parser.add_argument('name', metavar = 'N', help='The name of your dataset.')
-    parser.add_argument('csv', metavar = 'I', help='The path to the input dataset .csv file.'  )
-    parser.add_argument('out', metavar = 'O', help='The path to the folder where outputs will be stored.')
-    parser.add_argument('--mask', action ='store_true', help= 'If your data comes with annotations or masks.')
+    parser.add_argument('input', metavar = 'I', help='The path to the directory containing your vol/dicom files.'  )
+    parser.add_argument('output', metavar = 'O', help='The path to the folder where outputs will be stored.')
     parser.add_argument('--bm', action ='store_true', help='Output binary mask tif files.')
     parser.add_argument('--bmo', action ='store_true', help='Output binary mask overlay tif files.')
     parser.add_argument('--im', action ='store_true', help='Output instance mask overlay tif files.')
     parser.add_argument('--ptid', action ='store_true', help='Output a dataset html indexed by patient ids.')
     parser.add_argument('--imgid', action ='store_true', help='Output a dataset html indexed by image ids.')
     args = parser.parse_args(args)
-    global has_annotations
     global dataset_name
     global output_path
-    has_annotations = args.mask
     dataset_name = args.name
-    data.inputcsv = args.csv
-    output_path = args.out
+    data.dirtoextract = args.input
+    data.extracteddir = args.output
+    output_path = args.output
     if not os.path.isdir(output_path):
         print("Output dir does not exist! Making output dir...")
         os.mkdir(output_path)
-    print("Has annotations: ", has_annotations)
     print("Processing input...")
-    process_input(has_annotations = has_annotations)
+    process_input()
     print("Configuring model...")
     configure_model()
     print("Registering dataset...")
@@ -251,56 +245,6 @@ def main(args):
     if args.imgid:
         create_dfimg()
     print("Done!")
-
-# def main_alt():
-#     parser = argparse.ArgumentParser(description='Run the detectron2 pipeline.')
-#     parser.add_argument('root', metavar = 'P', help='The path of the folder containing your data folder and the extraction folder.')
-#     parser.add_argument('data', metavar = 'D', help='The path of the data folder containing your .vol files.')
-#     parser.add_argument('extracted', metavar = 'E', help='The path of the extraction folder that will contain your extracted files.')
-#     parser.add_argument('name', metavar = 'N', help='The name of your dataset.')
-#     parser.add_argument('--mask', action ='store_true', help= 'If your data comes with annotations or masks.')
-#     parser.add_argument('--bm', action ='store_true', help='Output binary mask tif files.')
-#     parser.add_argument('--bmo', action ='store_true', help='Output binary mask overlay tif files.')
-#     parser.add_argument('--im', action ='store_true', help='Output instance mask overlay tif files.')
-#     parser.add_argument('--ptid', action ='store_true', help='Output a dataset html indexed by patient ids.')
-#     parser.add_argument('--imgid', action ='store_true', help='Output a dataset html indexed by image ids.')
-#     args = parser.parse_args()
-#     global has_annotations
-#     global dataset_name
-#     has_annotations = args.mask
-#     dataset_name = args.name
-#     data.rpath= args.root #root path for files
-#     data.dirtoextract = args.data #extracted from
-#     data.filedir = args.extracted #split from
-#     print("Has annotations: ", has_annotations)
-#     print("Processing input...")
-#     process_input(has_annotations = has_annotations)
-#     print("Configuring model...")
-#     configure_model()
-#     print("Registering dataset...")
-#     register_dataset()
-#     print("Running inference...")
-#     run_prediction(cfg,dataset_name)
-#     print("Running ensemble...")
-#     run_ensemble()
-#     print("Evaluating dataset...")
-#     evaluate_dataset()
-#     print("Creating dataset table...")
-#     create_table()
-#     if args.bm:
-#         print("Creating binary masks tif (no overlay)...")
-#         create_tif_output(mode = 'bm')
-#     if args.bmo:
-#         print("Creating binary masks tif (with overlay)...")
-#         create_tif_output(mode = 'bm-o')
-#     if args.im:
-#         print("Creating instances masks tif (with overlay)...")
-#         create_tif_output(mode = 'im')
-#     if args.ptid:
-#         create_dfpts()
-#     if args.imgid:
-#         create_dfimg()
-#     print("Done!")
 
 if __name__ == "__main__":
     main(sys.argv[1:])
