@@ -1,21 +1,15 @@
 import datasets.data as data
-import plain_train_net as net
 import pickle
-import matplotlib.pyplot as plt
 from detectron2.config import get_cfg
-from plain_train_net import grab_dataset
-import detectron2.utils.comm as comm
+from analysis_lib import grab_dataset
 from detectron2.data import DatasetCatalog,MetadataCatalog
-from detectron2.engine import launch
 from detectron2.modeling import build_model
 from detectron2.data import build_detection_test_loader
 from detectron2.checkpoint import DetectionCheckpointer
 from detectron2.evaluation import inference_on_dataset, COCOEvaluator
 from Ensembler import Ensembler
-from plain_train_net import EvaluateClass,CreatePlotsRPD
-from plain_train_net import OutputVis
-from PIL import Image,ImageOps,ImageFilter,ImageSequence
-from detectron2.utils.visualizer import Visualizer
+from analysis_lib import EvaluateClass,CreatePlotsRPD,OutputVis
+
 import json
 import os
 import sys
@@ -39,7 +33,7 @@ output_path = None
 def process_input(): # Processes input .vol files and creates the pk file.
     data.extractFiles(name = dataset_name)
     stored_data = data.rpd_data(name = dataset_name)
-    pickle.dump(stored_data, open(os.path.join(data.script_dir,f"{dataset_name}_refined.pk"), "wb"))
+    pickle.dump(stored_data, open(os.path.join(data.script_dir,f"{dataset_name}.pk"), "wb"))
 
 def configure_model():
     global cfg
