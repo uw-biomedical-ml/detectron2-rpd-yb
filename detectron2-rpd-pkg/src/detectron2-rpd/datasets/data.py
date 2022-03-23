@@ -1,20 +1,12 @@
 #!/usr/bin/env python
 
-from detectron2.data import DatasetCatalog
+
 from glob import glob
-import numpy as np
-import os,sys
+import os
 import cv2
-from PIL import Image,ImageOps,ImageFilter,ImageSequence
 from .volReader import volFile
-from detectron2.structures import BoxMode
 from tqdm import tqdm
-import pickle
-import pandas as pd
-import matplotlib.pyplot as plt
-from matplotlib.backends.backend_pdf import PdfPages
-import pdb
-from .yb_split_optimizers import getSplitkfold
+
 
 
 script_dir = os.path.dirname(__file__)
@@ -25,7 +17,7 @@ class Error(Exception):
 import glob
 import pandas as pd
 
-def extractFiles(dataset_name = None, dirtoextract = None, output_path = None):
+def extractFiles(dataset_name, dirtoextract, output_path):
     if not os.path.isdir(os.path.join(output_path,"Extracted " + str(dataset_name))):
         print("Extracting " + dataset_name + "...")
         files_to_extract = glob.glob(os.path.join(dirtoextract,'**/*.vol'),recursive=True)
@@ -41,7 +33,7 @@ def extractFiles(dataset_name = None, dirtoextract = None, output_path = None):
         print(dataset_name + " has already been extracted.")
 
 
-def rpd_data(dataset_name = None, output_path = None):
+def rpd_data(dataset_name, output_path):
     dataset = []
     instances = 0
     wrong_poly = 0
