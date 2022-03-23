@@ -58,13 +58,16 @@ class OutputVis():
         else:
             sys.exit('Invalid mode. Only "model" or "file" permitted.')
         self.has_annotations = has_annotations
-        permitted_draw_modes = ['default','bw']
-        if draw_mode not in permitted_draw_modes:
-            sys.exit('draw_mode must be one of the following: {}'.format(permitted_draw_modes))
-        self.draw_mode = draw_mode
+        self.permitted_draw_modes = ['default','bw']
+        self.set_draw_mode(draw_mode)
         self.font_size = 16 #28 for ARVO
         self.annotation_color = 'r'
         self.scale = 3.0
+
+    def set_draw_mode(self,draw_mode):
+        if draw_mode not in self.permitted_draw_modes:
+            sys.exit('draw_mode must be one of the following: {}'.format(self.permitted_draw_modes))
+        self.draw_mode = draw_mode
 
     def get_ori_image(self,ImgId):
         """[summary]

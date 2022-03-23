@@ -96,83 +96,104 @@ def create_table():
     dataset_table.dfimg.sort_index(inplace=True)
     #dataset_table.dfimg['scan'] = dataset_table.dfimg['scan'].astype('int') #depends on what we want scan field to be
 
-def create_binary_masks_tif():
-    pred_file = os.path.join(output_path, 'coco_instances_results.json')
-    dfimg_dummy = dataset_table.dfimg
-    df_unique = dfimg_dummy.ptid.unique()
-    vis = OutputVis(dataset_name,prob_thresh = 0.5,pred_mode='file',pred_file=pred_file)
-    for scan in range(len(df_unique)):
-        df_currentpt = dfimg_dummy.loc[dfimg_dummy['ptid'] == df_unique[scan]]
-        df_pt_OD = df_currentpt.loc[df_currentpt['eye'] == 'OD'].sort_values('scan', kind = 'mergesort')
-        df_pt_OS = df_currentpt.loc[df_currentpt['eye'] == 'OS'].sort_values('scan', kind = 'mergesort')
-        df_pt_OD_ids = df_pt_OD.index.values
-        df_pt_OS_ids = df_pt_OS.index.values
-        if (len(df_pt_OD.index) > 0):
-            vis.output_masks_to_tiff(output_path, df_pt_OD_ids, df_unique[scan], 'OD')
-        if (len(df_pt_OS.index) > 0):
-            vis.output_masks_to_tiff(output_path, df_pt_OS_ids, df_unique[scan], 'OS')
+def output_vol_predictions(dataset_table,vis,volID,output_path,output_mode='pred_overlay'):
+    dfimg = dataset_table.dfimg
+    imgids = dfimg[dfimg.volID ==volID].sort_index().index.values
+    outname = os.path.join(output_path,f'{volID}_{output_mode}')
+    if output_mode=='pred_overlay':
+        vis.output_pred_to_tiff(imgids,outname,pred_only=False)
+    elif output_mode == 'pred_only':
+        vis.output_pred_to_tiff(imgids,outname,pred_only=True)
+    elif output_mode == 'originals':
+        vis.output_ori_to_tiff(imgids,outname)
+    elif output_mode == 'all':
+        vis.output_all_to_tiff(imgids,outname)
+    else:
+        print(f'Invalid mode {output_mode} for function output_vol_predictions.')
 
-def create_binary_masks_overlay_tif():
-    pred_file = os.path.join(output_path, 'coco_instances_results.json')
-    dfimg_dummy = dataset_table.dfimg
-    df_unique = dfimg_dummy.ptid.unique()
-    vis = OutputVis(dataset_name,prob_thresh = 0.5,pred_mode='file',pred_file=pred_file)
-    for scan in range(len(df_unique)):
-        df_currentpt = dfimg_dummy.loc[dfimg_dummy['ptid'] == df_unique[scan]]
-        df_pt_OD = df_currentpt.loc[df_currentpt['eye'] == 'OD'].sort_values('scan', kind = 'mergesort')
-        df_pt_OS = df_currentpt.loc[df_currentpt['eye'] == 'OS'].sort_values('scan', kind = 'mergesort')
-        df_pt_OD_ids = df_pt_OD.index.values
-        df_pt_OS_ids = df_pt_OS.index.values
-        if (len(df_pt_OD.index) > 0):
-            vis.output_overlay_masks_to_tiff(output_path, df_pt_OD_ids, df_unique[scan], 'OD')
-        if (len(df_pt_OS.index) > 0):
-            vis.output_overlay_masks_to_tiff(output_path, df_pt_OS_ids, df_unique[scan], 'OS')
+def output_dataset_predictions(dataset_table,vis,output_path,output_mode = 'pred_overlay',draw_mode='default'):
+    vis.set_draw_mode(draw_mode)
+    for volID in dataset_table.dfvol.index:
+        output_vol_predictions(dataset_table,vis,volID,output_path,output_mode)
 
-def create_instance_masks_overlay_tif():
-    pred_file = os.path.join(output_path, 'coco_instances_results.json')
-    dfimg_dummy = dataset_table.dfimg
-    df_unique = dfimg_dummy.ptid.unique()
-    vis = OutputVis(dataset_name,prob_thresh = 0.5,pred_mode='file',pred_file=pred_file)
-    for scan in range(len(df_unique)):
-        df_currentpt = dfimg_dummy.loc[dfimg_dummy['ptid'] == df_unique[scan]]
-        df_pt_OD = df_currentpt.loc[df_currentpt['eye'] == 'OD'].sort_values('scan', kind = 'mergesort')
-        df_pt_OS = df_currentpt.loc[df_currentpt['eye'] == 'OS'].sort_values('scan', kind = 'mergesort')
-        df_pt_OD_ids = df_pt_OD.index.values
-        df_pt_OS_ids = df_pt_OS.index.values
-        if (len(df_pt_OD.index) > 0):
-            vis.output_instances_masks_to_tiff(output_path, df_pt_OD_ids, df_unique[scan], 'OD')
-        if (len(df_pt_OS.index) > 0):
-            vis.output_instances_masks_to_tiff(output_path, df_pt_OS_ids, df_unique[scan], 'OS')
 
-def create_tif_output(mode = None):
-    pred_file = os.path.join(output_path, 'coco_instances_results.json')
-    dfimg_dummy = dataset_table.dfimg
-    df_unique = dfimg_dummy.ptid.unique()
-    vis = OutputVis(dataset_name,prob_thresh = 0.5,pred_mode='file',pred_file=pred_file)
-    for scan in range(len(df_unique)):
-        df_currentpt = dfimg_dummy.loc[dfimg_dummy['ptid'] == df_unique[scan]]
-        df_pt_OD = df_currentpt.loc[df_currentpt['eye'] == 'OD'].sort_values('scan', kind = 'mergesort')
-        df_pt_OS = df_currentpt.loc[df_currentpt['eye'] == 'OS'].sort_values('scan', kind = 'mergesort')
-        df_pt_OD_ids = df_pt_OD.index.values
-        df_pt_OS_ids = df_pt_OS.index.values
-        if (len(df_pt_OD.index) > 0):
-            if (mode == 'bm'):
-                vis.output_masks_to_tiff(output_path, df_pt_OD_ids, df_unique[scan], 'OD')
-            elif (mode == 'bm-o'):
-                vis.output_overlay_masks_to_tiff(output_path, df_pt_OD_ids, df_unique[scan], 'OD')
-            elif (mode == 'im'):
-                vis.output_instances_masks_to_tiff(output_path, df_pt_OD_ids, df_unique[scan], 'OD')
-            else:
-                print("No output mode selected!")
-        if (len(df_pt_OS.index) > 0):
-            if (mode == 'bm'):
-                vis.output_masks_to_tiff(output_path, df_pt_OS_ids, df_unique[scan], 'OS')
-            elif (mode == 'bm-o'):
-                vis.output_overlay_masks_to_tiff(output_path, df_pt_OS_ids, df_unique[scan], 'OS')
-            elif (mode == 'im'):
-                vis.output_instances_masks_to_tiff(output_path, df_pt_OS_ids, df_unique[scan], 'OS')
-            else:
-                print("No output mode selected!")
+# def create_binary_masks_tif():
+#     pred_file = os.path.join(output_path, 'coco_instances_results.json')
+#     dfimg_dummy = dataset_table.dfimg
+#     df_unique = dfimg_dummy.ptid.unique()
+#     vis = OutputVis(dataset_name,prob_thresh = 0.5,pred_mode='file',pred_file=pred_file)
+#     for scan in range(len(df_unique)):
+#         df_currentpt = dfimg_dummy.loc[dfimg_dummy['ptid'] == df_unique[scan]]
+#         df_pt_OD = df_currentpt.loc[df_currentpt['eye'] == 'OD'].sort_values('scan', kind = 'mergesort')
+#         df_pt_OS = df_currentpt.loc[df_currentpt['eye'] == 'OS'].sort_values('scan', kind = 'mergesort')
+#         df_pt_OD_ids = df_pt_OD.index.values
+#         df_pt_OS_ids = df_pt_OS.index.values
+#         if (len(df_pt_OD.index) > 0):
+#             vis.output_masks_to_tiff(output_path, df_pt_OD_ids, df_unique[scan], 'OD')
+#         if (len(df_pt_OS.index) > 0):
+#             vis.output_masks_to_tiff(output_path, df_pt_OS_ids, df_unique[scan], 'OS')
+
+# def create_binary_masks_overlay_tif():
+#     pred_file = os.path.join(output_path, 'coco_instances_results.json')
+#     dfimg_dummy = dataset_table.dfimg
+#     df_unique = dfimg_dummy.ptid.unique()
+#     vis = OutputVis(dataset_name,prob_thresh = 0.5,pred_mode='file',pred_file=pred_file)
+#     for scan in range(len(df_unique)):
+#         df_currentpt = dfimg_dummy.loc[dfimg_dummy['ptid'] == df_unique[scan]]
+#         df_pt_OD = df_currentpt.loc[df_currentpt['eye'] == 'OD'].sort_values('scan', kind = 'mergesort')
+#         df_pt_OS = df_currentpt.loc[df_currentpt['eye'] == 'OS'].sort_values('scan', kind = 'mergesort')
+#         df_pt_OD_ids = df_pt_OD.index.values
+#         df_pt_OS_ids = df_pt_OS.index.values
+#         if (len(df_pt_OD.index) > 0):
+#             vis.output_overlay_masks_to_tiff(output_path, df_pt_OD_ids, df_unique[scan], 'OD')
+#         if (len(df_pt_OS.index) > 0):
+#             vis.output_overlay_masks_to_tiff(output_path, df_pt_OS_ids, df_unique[scan], 'OS')
+
+# def create_instance_masks_overlay_tif():
+#     pred_file = os.path.join(output_path, 'coco_instances_results.json')
+#     dfimg_dummy = dataset_table.dfimg
+#     df_unique = dfimg_dummy.ptid.unique()
+#     vis = OutputVis(dataset_name,prob_thresh = 0.5,pred_mode='file',pred_file=pred_file)
+#     for scan in range(len(df_unique)):
+#         df_currentpt = dfimg_dummy.loc[dfimg_dummy['ptid'] == df_unique[scan]]
+#         df_pt_OD = df_currentpt.loc[df_currentpt['eye'] == 'OD'].sort_values('scan', kind = 'mergesort')
+#         df_pt_OS = df_currentpt.loc[df_currentpt['eye'] == 'OS'].sort_values('scan', kind = 'mergesort')
+#         df_pt_OD_ids = df_pt_OD.index.values
+#         df_pt_OS_ids = df_pt_OS.index.values
+#         if (len(df_pt_OD.index) > 0):
+#             vis.output_instances_masks_to_tiff(output_path, df_pt_OD_ids, df_unique[scan], 'OD')
+#         if (len(df_pt_OS.index) > 0):
+#             vis.output_instances_masks_to_tiff(output_path, df_pt_OS_ids, df_unique[scan], 'OS')
+
+# def create_tif_output(mode = None):
+#     pred_file = os.path.join(output_path, 'coco_instances_results.json')
+#     dfimg_dummy = dataset_table.dfimg
+#     df_unique = dfimg_dummy.ptid.unique()
+#     vis = OutputVis(dataset_name,prob_thresh = 0.5,pred_mode='file',pred_file=pred_file)
+#     for scan in range(len(df_unique)):
+#         df_currentpt = dfimg_dummy.loc[dfimg_dummy['ptid'] == df_unique[scan]]
+#         df_pt_OD = df_currentpt.loc[df_currentpt['eye'] == 'OD'].sort_values('scan', kind = 'mergesort')
+#         df_pt_OS = df_currentpt.loc[df_currentpt['eye'] == 'OS'].sort_values('scan', kind = 'mergesort')
+#         df_pt_OD_ids = df_pt_OD.index.values
+#         df_pt_OS_ids = df_pt_OS.index.values
+#         if (len(df_pt_OD.index) > 0):
+#             if (mode == 'bm'):
+#                 vis.output_masks_to_tiff(output_path, df_pt_OD_ids, df_unique[scan], 'OD')
+#             elif (mode == 'bm-o'):
+#                 vis.output_overlay_masks_to_tiff(output_path, df_pt_OD_ids, df_unique[scan], 'OD')
+#             elif (mode == 'im'):
+#                 vis.output_instances_masks_to_tiff(output_path, df_pt_OD_ids, df_unique[scan], 'OD')
+#             else:
+#                 print("No output mode selected!")
+#         if (len(df_pt_OS.index) > 0):
+#             if (mode == 'bm'):
+#                 vis.output_masks_to_tiff(output_path, df_pt_OS_ids, df_unique[scan], 'OS')
+#             elif (mode == 'bm-o'):
+#                 vis.output_overlay_masks_to_tiff(output_path, df_pt_OS_ids, df_unique[scan], 'OS')
+#             elif (mode == 'im'):
+#                 vis.output_instances_masks_to_tiff(output_path, df_pt_OS_ids, df_unique[scan], 'OS')
+#             else:
+#                 print("No output mode selected!")
 def create_dfpts():
     if (dataset_table == None):
         create_table()
