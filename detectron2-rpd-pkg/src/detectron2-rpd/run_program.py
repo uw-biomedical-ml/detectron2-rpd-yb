@@ -128,7 +128,7 @@ def main(args):
     parser = argparse.ArgumentParser(description='Run the detectron2 pipeline.')
     parser.add_argument('name', metavar = 'N', help='The name of your dataset.')
     parser.add_argument('input', metavar = 'I', help='The path to the directory containing your vol/dicom files.'  )
-    parser.add_argument('extracted', metavar = 'O', help='The path to the directory where extracted images will be stored.')
+    parser.add_argument('extracted', metavar = 'E', help='The path to the directory where extracted images will be stored.')
     parser.add_argument('output', metavar = 'O', help='The path to the directory where model predictions and other data will be stored.')
     parser.add_argument('--bm', action ='store_true', help='Output binary mask tif files.')
     parser.add_argument('--bmo', action ='store_true', help='Output binary mask overlay tif files.')
