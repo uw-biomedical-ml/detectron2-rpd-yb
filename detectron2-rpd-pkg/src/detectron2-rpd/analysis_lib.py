@@ -23,8 +23,10 @@ from detectron2.data import (
     DatasetCatalog,
     MetadataCatalog)
 import detectron2
+import detectron2.utils.comm as comm
 from detectron2.engine import DefaultPredictor
 from detectron2.utils.visualizer import Visualizer
+from detectron2.evaluation import COCOEvaluator
 
 import cv2
 from PIL import Image

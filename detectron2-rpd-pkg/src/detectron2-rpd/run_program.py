@@ -9,6 +9,8 @@ from detectron2.checkpoint import DetectionCheckpointer
 from detectron2.evaluation import inference_on_dataset, COCOEvaluator
 from Ensembler import Ensembler
 from analysis_lib import EvaluateClass,CreatePlotsRPD,OutputVis
+import logging
+logging.basicConfig(level=logging.INFO)
 
 import json
 import os
@@ -99,7 +101,7 @@ def create_table():
 def output_vol_predictions(dataset_table,vis,volID,output_path,output_mode='pred_overlay'):
     dfimg = dataset_table.dfimg
     imgids = dfimg[dfimg.volID ==volID].sort_index().index.values
-    outname = os.path.join(output_path,f'{volID}_{output_mode}')
+    outname = os.path.join(output_path,f'{volID}.tiff')
     if output_mode=='pred_overlay':
         vis.output_pred_to_tiff(imgids,outname,pred_only=False)
     elif output_mode == 'pred_only':
@@ -113,16 +115,17 @@ def output_vol_predictions(dataset_table,vis,volID,output_path,output_mode='pred
 
 def output_dataset_predictions(dataset_table,vis,output_path,output_mode = 'pred_overlay',draw_mode='default'):
     vis.set_draw_mode(draw_mode)
+    os.makedirs(output_path,exist_ok=True) ## should this be set to exist_ok=False?
     for volID in dataset_table.dfvol.index:
         output_vol_predictions(dataset_table,vis,volID,output_path,output_mode)
 
 
-def create_dfpts():
+def create_dfvol():
     if (dataset_table == None):
         create_table()
-    dfpts = dataset_table.dfpts.sort_values(by=['dt_instances'],ascending=False)
-    html_str = dfpts.style.format('{:.0f}').set_table_styles(styles).render()
-    html_file = open(os.path.join(output_path, 'dfpts_'+dataset_name+'.html'),'w')
+    dfvol = dataset_table.dfvol.sort_values(by=['dt_instances'],ascending=False)
+    html_str = dfvol.style.format('{:.0f}').set_table_styles(styles).render()
+    html_file = open(os.path.join(output_path, 'dfvol_'+dataset_name+'.html'),'w')
     html_file.write(html_str)
     html_file.close()
 
@@ -143,7 +146,7 @@ def main(args):
     parser.add_argument('--bm', action ='store_true', help='Output binary mask tif files.')
     parser.add_argument('--bmo', action ='store_true', help='Output binary mask overlay tif files.')
     parser.add_argument('--im', action ='store_true', help='Output instance mask overlay tif files.')
-    parser.add_argument('--vol', action ='store_true', help='Output a dataset html indexed by vol ids.')
+    parser.add_argument('--volid', action ='store_true', help='Output a dataset html indexed by vol ids.')
     parser.add_argument('--imgid', action ='store_true', help='Output a dataset html indexed by image ids.')
     args = parser.parse_args(args)
     global dataset_name
@@ -171,10 +174,14 @@ def main(args):
     create_table()
     vis = OutputVis(dataset_name,
         prob_thresh = myeval.prob_thresh, 
+        pred_mode = 'file',
         pred_file = os.path.join(output_path, 'coco_instances_results.json'),
         has_annotations=False)
+    vis.scale=1.0
+
     if args.bm:
         print("Creating binary masks tif (no overlay)...")
+        vis.annotation_color='w'
         output_dataset_predictions(dataset_table,vis,os.path.join(output_path,'predicted_binary_masks'),'pred_only','bw')
     if args.bmo:
         print("Creating binary masks tif (with overlay)...")
@@ -182,8 +189,8 @@ def main(args):
     if args.im:
         print("Creating instances masks tif (with overlay)...")
         output_dataset_predictions(dataset_table,vis,os.path.join(output_path,'predicted_instance_overlays'),'pred_overlay','default')
-    if args.ptid:
-        create_dfpts()
+    if args.volid:
+        create_dfvol()
     if args.imgid:
         create_dfimg()
     print("Done!")
