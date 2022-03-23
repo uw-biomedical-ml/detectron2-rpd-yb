@@ -18,12 +18,6 @@ from .yb_split_optimizers import getSplitkfold
 
 
 script_dir = os.path.dirname(__file__)
-dirtoextract=None
-extracteddir=None
-filedir=None
-inputcsv=None
-df_input=None
-
 class Error(Exception):
     """Base class for exceptions in this module."""
     pass
@@ -31,28 +25,27 @@ class Error(Exception):
 import glob
 import pandas as pd
 
-def extractFiles(name = None):
-    if not os.path.isdir(os.path.join(extracteddir,"Extracted " + str(name))):
-        print("Extracting " + name + "...")
+def extractFiles(dataset_name = None, dirtoextract = None, output_path = None):
+    if not os.path.isdir(os.path.join(output_path,"Extracted " + str(dataset_name))):
+        print("Extracting " + dataset_name + "...")
         files_to_extract = glob.glob(os.path.join(dirtoextract,'**/*.vol'),recursive=True)
         for i,line in enumerate(tqdm(files_to_extract)):
             fpath = line.strip('\n').replace('\\','/')
             path, scan_str = fpath.strip('.vol').rsplit('/',1)
-            extractpath = os.path.join(extracteddir,"Extracted " + str(name),scan_str.replace('_','/'))
+            extractpath = os.path.join(output_path,"Extracted " + str(dataset_name),scan_str.replace('_','/'))
             os.makedirs(extractpath,exist_ok=True)
             vol = volFile(fpath)
             preffix = extractpath+'/'+scan_str+'_oct'
             vol.renderOCTscans(preffix)
     else:
-        print(name + " has already been extracted.")
+        print(dataset_name + " has already been extracted.")
 
 
-def rpd_data(name = None):
+def rpd_data(dataset_name = None, output_path = None):
     dataset = []
     instances = 0
     wrong_poly = 0
-    global extracted_files
-    extracted_files = glob.glob(os.path.join(extracteddir,"Extracted " + str(name),'**/*.png'),recursive=True)
+    extracted_files = glob.glob(os.path.join(output_path,"Extracted " + str(dataset_name),'**/*.png'),recursive=True)
     print("Generating dataset of images...")
     for fn in extracted_files:
         imageid = fn.split("/")[-1]
