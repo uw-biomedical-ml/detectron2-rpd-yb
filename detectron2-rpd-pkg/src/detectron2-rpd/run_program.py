@@ -25,9 +25,9 @@ os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 
 dpi= 120
 
-def process_input(dataset_name, dirtoextract, output_path): # Processes input .vol files and creates the pk file.
-    data.extractFiles(dataset_name, dirtoextract, output_path)
-    stored_data = data.rpd_data(dataset_name, output_path)
+def process_input(dataset_name, dirtoextract, extracted_path): # Processes input .vol files and creates the pk file.
+    data.extractFiles(dataset_name, dirtoextract, extracted_path)
+    stored_data = data.rpd_data(dataset_name, extracted_path)
     pickle.dump(stored_data, open(os.path.join(data.script_dir,f"{dataset_name}.pk"), "wb"))
 
 def configure_model():
@@ -128,7 +128,8 @@ def main(args):
     parser = argparse.ArgumentParser(description='Run the detectron2 pipeline.')
     parser.add_argument('name', metavar = 'N', help='The name of your dataset.')
     parser.add_argument('input', metavar = 'I', help='The path to the directory containing your vol/dicom files.'  )
-    parser.add_argument('output', metavar = 'O', help='The path to the folder where outputs will be stored.')
+    parser.add_argument('extracted', metavar = 'O', help='The path to the directory where extracted images will be stored.')
+    parser.add_argument('output', metavar = 'O', help='The path to the directory where model predictions and other data will be stored.')
     parser.add_argument('--bm', action ='store_true', help='Output binary mask tif files.')
     parser.add_argument('--bmo', action ='store_true', help='Output binary mask overlay tif files.')
     parser.add_argument('--im', action ='store_true', help='Output instance mask overlay tif files.')
@@ -138,15 +139,18 @@ def main(args):
 
     name = args.name
     input = args.input
+    extracted = args.extracted
     output = args.output
     iou_thresh = 0.2
     prob_thresh = 0.5
-    
+    if not os.path.isdir(extracted):
+        print("Extracted dir does not exist! Making extracted dir...")
+        os.mkdir(extracted)
     if not os.path.isdir(output):
         print("Output dir does not exist! Making output dir...")
         os.mkdir(output)
     print("Processing input...")
-    process_input(name, input, output)
+    process_input(name, input, extracted)
     print("Configuring model...")
     cfg = configure_model()
     print("Registering dataset...")

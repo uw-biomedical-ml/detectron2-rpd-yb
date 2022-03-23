@@ -17,14 +17,14 @@ class Error(Exception):
 import glob
 import pandas as pd
 
-def extractFiles(dataset_name, dirtoextract, output_path):
-    if not os.path.isdir(os.path.join(output_path,"Extracted " + str(dataset_name))):
+def extractFiles(dataset_name, dirtoextract, extracted_path):
+    if not os.path.isdir(os.path.join(extracted_path,"Extracted " + str(dataset_name))):
         print("Extracting " + dataset_name + "...")
         files_to_extract = glob.glob(os.path.join(dirtoextract,'**/*.vol'),recursive=True)
         for i,line in enumerate(tqdm(files_to_extract)):
             fpath = line.strip('\n').replace('\\','/')
             path, scan_str = fpath.strip('.vol').rsplit('/',1)
-            extractpath = os.path.join(output_path,"Extracted " + str(dataset_name),scan_str.replace('_','/'))
+            extractpath = os.path.join(extracted_path,dataset_name,scan_str.replace('_','/'))
             os.makedirs(extractpath,exist_ok=True)
             vol = volFile(fpath)
             preffix = extractpath+'/'+scan_str+'_oct'
@@ -33,11 +33,11 @@ def extractFiles(dataset_name, dirtoextract, output_path):
         print(dataset_name + " has already been extracted.")
 
 
-def rpd_data(dataset_name, output_path):
+def rpd_data(dataset_name, extracted_path):
     dataset = []
     instances = 0
     wrong_poly = 0
-    extracted_files = glob.glob(os.path.join(output_path,"Extracted " + str(dataset_name),'**/*.png'),recursive=True)
+    extracted_files = glob.glob(os.path.join(extracted_path,dataset_name,'**/*.png'),recursive=True)
     print("Generating dataset of images...")
     for fn in extracted_files:
         imageid = fn.split("/")[-1]
