@@ -28,7 +28,7 @@ dpi= 120
 def process_input(dataset_name, dirtoextract, output_path): # Processes input .vol files and creates the pk file.
     data.extractFiles(dataset_name, dirtoextract, output_path)
     stored_data = data.rpd_data(dataset_name, output_path)
-    pickle.dump(stored_data, open(os.path.join(data.script_dir,f"{dataset_name}_refined.pk"), "wb"))
+    pickle.dump(stored_data, open(os.path.join(data.script_dir,f"{dataset_name}.pk"), "wb"))
 
 def configure_model():
     cfg = get_cfg()
@@ -70,14 +70,14 @@ def run_prediction(cfg, dataset_name, output_path):
         results_i = inference_on_dataset(model, myloader, myeval) #produces coco_instance_results.json when myeval.evaluate is called
     print("Done with predictions!")
 
-def run_ensemble(dataset_name, output_path):
-    ens = Ensembler(output_path,dataset_name,["fold1", "fold2", "fold3", "fold4","fold5"],.2)
+def run_ensemble(dataset_name, output_path, iou_thresh = 0.2):
+    ens = Ensembler(output_path,dataset_name,["fold1", "fold2", "fold3", "fold4","fold5"],  iou_thresh=iou_thresh)
     ens.mean_score_nms()
     ens.save_coco_instances()
     return ens
 
-def evaluate_dataset(dataset_name, output_path):
-    myeval = EvaluateClass(dataset_name, output_path, iou_thresh = .2, prob_thresh=0.5,evalsuper=False)
+def evaluate_dataset(dataset_name, output_path,iou_thresh = 0.2,prob_thresh = 0.5):
+    myeval = EvaluateClass(dataset_name, output_path, iou_thresh = iou_thresh, prob_thresh=prob_thresh,evalsuper=False)
     myeval.evaluate()
     with open(os.path.join(output_path,'scalar_dict.json'),"w") as outfile:
         json.dump(obj=myeval.summarize_scalars(),fp=outfile)
@@ -135,9 +135,13 @@ def main(args):
     parser.add_argument('--volid', action ='store_true', help='Output a dataset html indexed by vol ids.')
     parser.add_argument('--imgid', action ='store_true', help='Output a dataset html indexed by image ids.')
     args = parser.parse_args(args)
+
     name = args.name
     input = args.input
     output = args.output
+    iou_thresh = 0.2
+    prob_thresh = 0.5
+    
     if not os.path.isdir(output):
         print("Output dir does not exist! Making output dir...")
         os.mkdir(output)
@@ -150,9 +154,9 @@ def main(args):
     print("Running inference...")
     run_prediction(cfg, name, output)
     print("Running ensemble...")
-    run_ensemble(name, output)
+    run_ensemble(name, output, iou_thresh)
     print("Evaluating dataset...")
-    eval = evaluate_dataset(name, output)
+    eval = evaluate_dataset(name, output, iou_thresh, prob_thresh)
     print("Creating dataset table...")
     table = create_table(eval)
     vis = OutputVis(name,
