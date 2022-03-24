@@ -17,8 +17,8 @@ class Error(Exception):
 import glob
 import pandas as pd
 
-def extractFiles(dataset_name, dirtoextract, extracted_path):
-    if not os.path.isdir(os.path.join(extracted_path,"Extracted " + str(dataset_name))):
+def extract_files(dataset_name, dirtoextract, extracted_path):
+    if not os.path.isdir(os.path.join(extracted_path,dataset_name)):
         print("Extracting " + dataset_name + "...")
         files_to_extract = glob.glob(os.path.join(dirtoextract,'**/*.vol'),recursive=True)
         for i,line in enumerate(tqdm(files_to_extract)):

@@ -25,11 +25,14 @@ os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 
 dpi= 120
 
-def process_input(dataset_name, dirtoextract, extracted_path): # Processes input .vol files and creates the pk file.
-    data.extractFiles(dataset_name, dirtoextract, extracted_path)
+def create_dataset(dataset_name, extracted_path): # Creates dataset and pk file from extracted images.
     stored_data = data.rpd_data(dataset_name, extracted_path)
     pickle.dump(stored_data, open(os.path.join(data.script_dir,f"{dataset_name}.pk"), "wb"))
-
+    
+def process_input(dataset_name, dirtoextract, extracted_path): # Processes input .vol files and creates the pk file.
+    data.extract_files(dataset_name, dirtoextract, extracted_path)
+    create_dataset(dataset_name, extracted_path)
+    
 def configure_model():
     cfg = get_cfg()
     moddir = os.path.dirname(os.path.realpath(__file__))
@@ -51,7 +54,7 @@ def run_prediction(cfg, dataset_name, output_path):
     myloader = build_detection_test_loader(cfg,dataset_name) 
     myeval = COCOEvaluator(dataset_name,tasks={'bbox','segm'},output_dir =output_path) #produces _coco_format.json when initialized
     for mdl in ("fold1", "fold2", "fold3", "fold4","fold5"):
-        extract_directory = 'models_t'
+        extract_directory = 'Models'
         if not os.path.isdir(extract_directory):
             os.mkdir(extract_directory)
             url = 'https://s3.us-west-2.amazonaws.com/comp.ophthalmology.uw.edu/models.zip'
@@ -130,60 +133,71 @@ def main(args):
     parser.add_argument('input', metavar = 'I', help='The path to the directory containing your vol/dicom files.'  )
     parser.add_argument('extracted', metavar = 'E', help='The path to the directory where extracted images will be stored.')
     parser.add_argument('output', metavar = 'O', help='The path to the directory where model predictions and other data will be stored.')
-    parser.add_argument('--bm', action ='store_true', help='Output binary mask tif files.')
-    parser.add_argument('--bmo', action ='store_true', help='Output binary mask overlay tif files.')
-    parser.add_argument('--im', action ='store_true', help='Output instance mask overlay tif files.')
-    parser.add_argument('--volid', action ='store_true', help='Output a dataset html indexed by vol ids.')
-    parser.add_argument('--imgid', action ='store_true', help='Output a dataset html indexed by image ids.')
+    parser.add_argument('--both', action ='store_true', help='Run image extraction and inference. Note: data and vis flags must be included for outputting data htmls and visualizations respectively.')
+    parser.add_argument('--ext', action ='store_true', help='Extract images from your input files (.vol/.dicom).')
+    parser.add_argument('--inf', action ='store_true', help='Run inference on extracted images. Note: Files must already be extracted!')
+    parser.add_argument('--data', action ='store_true', help='Create dataset html of model outputs. Note: Inference must already be done!')
+    parser.add_argument('--volid', action ='store_true', help='Output a dataset html indexed by vol ids. Note: data flag must be included!')
+    parser.add_argument('--imgid', action ='store_true', help='Output a dataset html indexed by image ids. Note: data flag must be included!')
+    parser.add_argument('--vis', action ='store_true', help='Create visualizations of model outputs. Note: Inference must already be done!')
+    parser.add_argument('--bm', action ='store_true', help='Output binary mask tif files. Note: vis flag must be included!')
+    parser.add_argument('--bmo', action ='store_true', help='Output binary mask overlay tif files. Note: vis flag must be included!')
+    parser.add_argument('--im', action ='store_true', help='Output instance mask overlay tif files. Note: vis flag must be included!')
     args = parser.parse_args(args)
-
     name = args.name
     input = args.input
     extracted = args.extracted
     output = args.output
     iou_thresh = 0.2
     prob_thresh = 0.5
-    if not os.path.isdir(extracted):
-        print("Extracted dir does not exist! Making extracted dir...")
-        os.mkdir(extracted)
-    if not os.path.isdir(output):
-        print("Output dir does not exist! Making output dir...")
-        os.mkdir(output)
-    print("Processing input...")
-    process_input(name, input, extracted)
-    print("Configuring model...")
-    cfg = configure_model()
-    print("Registering dataset...")
-    register_dataset(name)
-    print("Running inference...")
-    run_prediction(cfg, name, output)
-    print("Running ensemble...")
-    run_ensemble(name, output, iou_thresh)
-    print("Evaluating dataset...")
-    eval = evaluate_dataset(name, output, iou_thresh, prob_thresh)
-    print("Creating dataset table...")
-    table = create_table(eval)
-    vis = OutputVis(name,
-        prob_thresh = eval.prob_thresh, 
-        pred_mode = 'file',
-        pred_file = os.path.join(output, 'coco_instances_results.json'),
-        has_annotations=False)
-    vis.scale=1.0
-    if args.bm:
-        print("Creating binary masks tif (no overlay)...")
-        vis.annotation_color='w'
-        output_dataset_predictions(table,vis,os.path.join(output,'predicted_binary_masks'),'pred_only','bw')
-    if args.bmo:
-        print("Creating binary masks tif (with overlay)...")
-        output_dataset_predictions(table,vis,os.path.join(output,'predicted_binary_overlays'),'pred_overlay','bw')
-    if args.im:
-        print("Creating instances masks tif (with overlay)...")
-        output_dataset_predictions(table,vis,os.path.join(output,'predicted_instance_overlays'),'pred_overlay','default')
-    if args.volid:
-        create_dfvol(name, output, table)
-    if args.imgid:
-        create_dfimg(name, output, table)
-    print("Done!")
+    if args.ext or args.both:
+        if not os.path.isdir(extracted):
+            print("Extracted dir does not exist! Making extracted dir...")
+            os.mkdir(extracted)
+        data.extract_files(name, input, extracted)
+        print("Image extraction complete!")
+    if args.inf or args.both:
+        print("Creating dataset from extracted images...")
+        create_dataset(name, extracted)
+        print("Configuring model...")
+        cfg = configure_model()
+        print("Registering dataset...")
+        register_dataset(name)
+        if not os.path.isdir(output):
+            print("Output dir does not exist! Making output dir...")
+            os.mkdir(output)
+        print("Running inference...")
+        run_prediction(cfg, name, output)
+        print("Inference complete!")
+    if args.data or args.vis:
+        print("Evaluating dataset...")
+        eval = evaluate_dataset(name, output, iou_thresh, prob_thresh)
+        print("Creating dataset table...")
+        table = create_table(eval)
+        if args.data:
+                if args.volid:
+                    create_dfvol(name, output, table)
+                if args.imgid:
+                    create_dfimg(name, output, table)
+                print("Dataset htmls complete!")
+        if args.vis:
+            vis = OutputVis(name,
+                prob_thresh = eval.prob_thresh, 
+                pred_mode = 'file',
+                pred_file = os.path.join(output, 'coco_instances_results.json'),
+                has_annotations=False)
+            vis.scale=1.0
+            if args.bm:
+                print("Creating binary masks tif (no overlay)...")
+                vis.annotation_color='w'
+                output_dataset_predictions(table,vis,os.path.join(output,'predicted_binary_masks'),'pred_only','bw')
+            if args.bmo:
+                print("Creating binary masks tif (with overlay)...")
+                output_dataset_predictions(table,vis,os.path.join(output,'predicted_binary_overlays'),'pred_overlay','bw')
+            if args.im:
+                print("Creating instances masks tif (with overlay)...")
+                output_dataset_predictions(table,vis,os.path.join(output,'predicted_instance_overlays'),'pred_overlay','default')
+            print("Visualizations complete!")
 
 if __name__ == "__main__":
     main(sys.argv[1:])
