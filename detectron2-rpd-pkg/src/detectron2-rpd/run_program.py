@@ -10,6 +10,7 @@ from detectron2.evaluation import inference_on_dataset, COCOEvaluator
 from Ensembler import Ensembler
 from analysis_lib import EvaluateClass,CreatePlotsRPD,OutputVis
 import logging
+import configargparse
 logging.basicConfig(level=logging.INFO)
 
 import json
@@ -128,35 +129,59 @@ def create_dfimg(dataset_name, output_path, dataset_table):
     html_file.close()
 
 def main(args):
-    parser = argparse.ArgumentParser(description='Run the detectron2 pipeline.')
-    parser.add_argument('name', metavar = 'N', help='The name of your dataset.')
-    parser.add_argument('input', metavar = 'I', help='The path to the directory containing your vol/dicom files.'  )
-    parser.add_argument('extracted', metavar = 'E', help='The path to the directory where extracted images will be stored.')
-    parser.add_argument('output', metavar = 'O', help='The path to the directory where model predictions and other data will be stored.')
-    parser.add_argument('--both', action ='store_true', help='Run image extraction and inference. Note: data and vis flags must be included for outputting data htmls and visualizations respectively.')
-    parser.add_argument('--ext', action ='store_true', help='Extract images from your input files (.vol/.dicom).')
-    parser.add_argument('--inf', action ='store_true', help='Run inference on extracted images. Note: Files must already be extracted!')
-    parser.add_argument('--data', action ='store_true', help='Create dataset html of model outputs. Note: Inference must already be done!')
-    parser.add_argument('--volid', action ='store_true', help='Output a dataset html indexed by vol ids. Note: data flag must be included!')
-    parser.add_argument('--imgid', action ='store_true', help='Output a dataset html indexed by image ids. Note: data flag must be included!')
-    parser.add_argument('--vis', action ='store_true', help='Create visualizations of model outputs. Note: Inference must already be done!')
-    parser.add_argument('--bm', action ='store_true', help='Output binary mask tif files. Note: vis flag must be included!')
-    parser.add_argument('--bmo', action ='store_true', help='Output binary mask overlay tif files. Note: vis flag must be included!')
-    parser.add_argument('--im', action ='store_true', help='Output instance mask overlay tif files. Note: vis flag must be included!')
-    args = parser.parse_args(args)
+    name = None
+    input = None
+    extracted = None
+    output = None
+    run_ext = True
+    run_inf = True
+    make_table = True
+    volid = True
+    imgid = True
+    make_visuals = False
+    bm = False
+    bmo = False
+    imo = False
+    parser = configargparse.ArgParser(description='Run the detectron2 pipeline.')
+    parser.add('--config', required = True, is_config_file = True, help = 'The path to your config file.')
+    parser.add('--name', metavar = 'N', type=str, help='The name of your dataset.')
+    parser.add('--input_dir', metavar = 'I', type=str, help='The path to the directory containing your vol/dicom files.'  )
+    parser.add('--extracted_dir', metavar = 'E', type=str, help='The path to the directory where extracted images will be stored.')
+    parser.add('--output_dir', metavar = 'O', type=str, help='The path to the directory where model predictions and other data will be stored.')
+    parser.add('--run_both', action ='store_true', help='Run image extraction and inference. Note: create_tables and create_visuals flags must be included for outputting data htmls and visualizations respectively.')
+    parser.add('--run_extract', action ='store_true', help='Extract images from your input files (.vol/.dicom).')
+    parser.add('--run_inference', action ='store_true', help='Run inference on extracted images. Note: Files must already be extracted!')
+    parser.add('--create_tables', action ='store_true', help='Create dataset html of model outputs. Note: Inference must already be done amd volid/imgid flags set!')
+    parser.add('--volume_id', action ='store_true', help='Output a dataset html indexed by vol ids. Note: create_tables flag must be included!')
+    parser.add('--image_id', action ='store_true', help='Output a dataset html indexed by image ids. Note: create_tables flag must be included!')
+    parser.add('--create_visuals', action ='store_true', help='Create visualizations of model outputs. Note: Inference must already be done and bm/bmo/im flags set!')
+    parser.add('--binary_mask', action ='store_true', help='Output binary mask tif files. Note: create_visuals flag must be included!')
+    parser.add('--binary_mask_overlay', action ='store_true', help='Output binary mask overlay tif files. Note: create_visuals flag must be included!')
+    parser.add('--instance_mask_overlay', action ='store_true', help='Output instance mask overlay tif files. Note: create_visuals flag must be included!')
+    args = parser.parse_args()
+    print(args)
     name = args.name
-    input = args.input
-    extracted = args.extracted
-    output = args.output
+    input = args.input_dir
+    extracted = args.extracted_dir
+    output = args.output_dir
+    run_ext = args.run_extract
+    run_inf = args.run_inference
+    make_table = args.create_tables
+    volid = args.volume_id
+    imgid = args.image_id
+    make_visuals = args.create_visuals
+    bm = args.binary_mask
+    bmo = args.binary_mask_overlay
+    imo = args.instance_mask_overlay
     iou_thresh = 0.2
     prob_thresh = 0.5
-    if args.ext or args.both:
+    if run_ext or args.run_both:
         if not os.path.isdir(extracted):
             print("Extracted dir does not exist! Making extracted dir...")
             os.mkdir(extracted)
         data.extract_files(name, input, extracted)
         print("Image extraction complete!")
-    if args.inf or args.both:
+    if run_inf or args.run_both:
         print("Creating dataset from extracted images...")
         create_dataset(name, extracted)
         print("Configuring model...")
@@ -168,33 +193,35 @@ def main(args):
             os.mkdir(output)
         print("Running inference...")
         run_prediction(cfg, name, output)
-        print("Inference complete!")
-    if args.data or args.vis:
+        print("Inference complete, running ensemble...")
+        run_ensemble(name, output)
+        print("Ensemble complete!")
+    if make_table or make_visuals:
         print("Evaluating dataset...")
         eval = evaluate_dataset(name, output, iou_thresh, prob_thresh)
         print("Creating dataset table...")
         table = create_table(eval)
-        if args.data:
-                if args.volid:
+        if make_table:
+                if volid:
                     create_dfvol(name, output, table)
-                if args.imgid:
+                if imgid:
                     create_dfimg(name, output, table)
                 print("Dataset htmls complete!")
-        if args.vis:
+        if make_visuals:
             vis = OutputVis(name,
                 prob_thresh = eval.prob_thresh, 
                 pred_mode = 'file',
                 pred_file = os.path.join(output, 'coco_instances_results.json'),
                 has_annotations=False)
             vis.scale=1.0
-            if args.bm:
+            if bm:
                 print("Creating binary masks tif (no overlay)...")
                 vis.annotation_color='w'
                 output_dataset_predictions(table,vis,os.path.join(output,'predicted_binary_masks'),'pred_only','bw')
-            if args.bmo:
+            if bmo:
                 print("Creating binary masks tif (with overlay)...")
                 output_dataset_predictions(table,vis,os.path.join(output,'predicted_binary_overlays'),'pred_overlay','bw')
-            if args.im:
+            if imo:
                 print("Creating instances masks tif (with overlay)...")
                 output_dataset_predictions(table,vis,os.path.join(output,'predicted_instance_overlays'),'pred_overlay','default')
             print("Visualizations complete!")
