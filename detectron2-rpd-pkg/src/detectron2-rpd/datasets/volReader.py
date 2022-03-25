@@ -102,7 +102,7 @@ class volFile():
         Renders OCT images a PNG file and optionally overlays segmentation lines
 
         Args:
-            filepre (str): filename prefix. OCT Images will be named as "<prefix>-001.png"
+            filepre (str): filename prefix. OCT Images will be named as "<prefix>_001.png"
             renderSeg (bool): True will render colored lines for the segmentation of the RPE, ILM, and NFL on the B scans.
 
         Returns:
@@ -120,7 +120,7 @@ class volFile():
                     for x in range(wf["segmentations"].shape[2]):
                         a[int(wf["segmentations"][li,i,x]),x, li] = 255
 
-            Image.fromarray(a).save("%s-%03d.png" % (filepre, i))
+            Image.fromarray(a).save("%s_%03d.png" % (filepre, i))
 
     def __parseVolFile(self, fn):
         wholefile = OrderedDict()
