@@ -42,7 +42,7 @@ After the bat file finishes, the setup is complete. By default, detectron2-rpd-y
 
 Step 3) Running Detectron2-RPD
 
-Before running the model, make sure to adjust the options.ini file. The default template:
+Before running the model, make sure to adjust the config file (options.ini) according to your needs. The example config file included with the installation:
 
 ![image](https://user-images.githubusercontent.com/46503967/160223848-b1763ea4-6114-45cf-a17b-5425ca2de618.png)
 
