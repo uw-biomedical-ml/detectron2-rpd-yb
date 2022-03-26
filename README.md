@@ -1,5 +1,9 @@
 Setting up Detectron2-RPD
- 
+
+Step 0) Download bat files.zip and extract files. The folder should contain these files:
+
+![image](https://user-images.githubusercontent.com/46503967/160223809-62187a5d-37ba-4bed-99f1-a190bcb13dd7.png)
+
 Step 1) Install C++ Build Tools
 
 Prior to starting the installation process, make sure to save any important files. In order to finish the installation, a restart is required.
@@ -32,34 +36,47 @@ After the bat file finishes, the setup is complete. You can now run the model.
 
 Step 3) Running Detectron2-RPD
 
+Before running the model, make sure to adjust the options.ini file. The default template:
+
+![image](https://user-images.githubusercontent.com/46503967/160223848-b1763ea4-6114-45cf-a17b-5425ca2de618.png)
+
+VOL EXTRACTION
+
+run_extract (true/false): Extract images from your input files (.vol/.dicom).
+
+input_dir: The path to the directory containing your vol/dicom files.
+
+extracted_dir: The path to the directory where extracted images will be stored.
+
+
+INFERENCE
+
+dataset_name: The name of your dataset.
+
+output_dir: The path to the directory where model predictions and other data will be stored.
+
+run_inference (true/false): Run inference on extracted images. Note: Files must already be extracted!
+
+create_tables (true/false): Create dataset html of model outputs. Note: Inference must already be done!
+
+VISUAL OUTPUT
+
+create_visuals (true/false): Create visualizations of model outputs. Note: Inference must already be done and bm/bmo/im flags set!
+
+binary_mask (true/false): Output binary mask tif files. Note: create_visuals flag must be included!
+
+binary_mask_overlay (true/false): Output binary mask overlay tif files. Note: create_visuals flag must be included!
+
+instance_mask_overlay (true/false): Output instance mask overlay tif files. Note: create_visuals flag must be included!
+
+
+
 To run the model, run Anaconda Prompt (miniconda3), which can be found on your computer using the Windows Search function.
 
-In the prompt window, navigate to the detectron2-rpd-yb folder (using cd).
+In the prompt window, go to detectron2-rpd-yb/detectron2-rpd-pkg/src/detectron2-rpd-test/ (using cd).
 
 Once inside the folder, run the following command to run the model:
 
-python run_program.py %dataset% %input% %output% --bm --bmo --im --ptid --imgid
+python run_program.py  --config %config%
 
-Required flags:
-
-%dataset% = name of the dataset
-
-%input% = path to the input .csv file
-
-%output% = path to the folder where outputs will be stored (NOTE: If the folder does not exist, it will be made!)
-
-Optional flags:
-
-mask = if your data comes with annotations or masks
-
-bm = binary mask
-
-bmo = binary mask overlay
-
-im = instance mask overlay
-
-ptid = dataset html (by ptid)
-
-imgid = dataset html (by imgid)
-
-
+%config% = path to your config file.

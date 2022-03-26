@@ -70,6 +70,7 @@ binary_mask_overlay (true/false): Output binary mask overlay tif files. Note: cr
 instance_mask_overlay (true/false): Output instance mask overlay tif files. Note: create_visuals flag must be included!
 
 
+
 To run the model, run Anaconda Prompt (miniconda3), which can be found on your computer using the Windows Search function.
 
 In the prompt window, go to detectron2-rpd-yb/detectron2-rpd-pkg/src/detectron2-rpd-test/ (using cd).
