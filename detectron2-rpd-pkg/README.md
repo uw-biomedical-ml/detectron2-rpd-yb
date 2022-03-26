@@ -1,8 +1,8 @@
 Setting up Detectron2-RPD
 
-Step 0) Download bat files.zip and extract files. The folder should contain these files:
+Step 0) Download win-detectron2-rpd.zip and extract the files. The folder should contain these files:
 
-![image](https://user-images.githubusercontent.com/46503967/160223809-62187a5d-37ba-4bed-99f1-a190bcb13dd7.png)
+![image](https://user-images.githubusercontent.com/46503967/160225009-ac18eb72-a13b-4f2a-994d-77e91c6fa977.png)
 
 &nbsp;
 
@@ -22,7 +22,7 @@ Press Continue.
 
 ![image](https://user-images.githubusercontent.com/46503967/145657130-10c828ef-679b-4f5d-98af-00a91e26ba81.png)
 
-Tick the box labelled "Desktop development with C++". Your installer should now look like so:
+Tick the box labelled "Desktop development with C++" (IMPORTANT). Your installer should now look like so:
 
 ![image](https://user-images.githubusercontent.com/46503967/145657439-e145402a-dc26-4279-8705-1a2834fba5f4.png)
 
@@ -32,11 +32,11 @@ Press Install. After the installation is finished, restart your PC to finalize t
 
 Step 2) Install Miniconda with Detectron 2
 
-To install miniconda with detectron2, run "conda_install.bat".
+To install miniconda with detectron2 and the detectron2-rpd-yb repo, run "install.bat".
 
-![image](https://user-images.githubusercontent.com/46503967/145657820-33a85b39-a157-47d9-934d-22ebea3e2913.png)
+![image](https://user-images.githubusercontent.com/46503967/160224875-8200344f-0515-4464-bca4-e72d65446004.png)
 
-After the bat file finishes, the setup is complete. You can now run the model.
+After the bat file finishes, the setup is complete. By default, detectron2-rpd-yb (the repo) is located in the win-detectron2-rpd folder. You can now run the model.
 
 &nbsp;
 
@@ -84,7 +84,7 @@ instance_mask_overlay (true/false): Output instance mask overlay tif files. Note
 
 To run the model, run Anaconda Prompt (miniconda3), which can be found on your computer using the Windows Search function.
 
-In the prompt window, go to detectron2-rpd-yb/detectron2-rpd-pkg/src/detectron2-rpd-test/ (using cd).
+In the prompt window, go to detectron2-rpd-yb/detectron2-rpd-pkg/src/detectron2-rpd/ (using cd).
 
 Once inside the folder, run the following command to run the model:
 
