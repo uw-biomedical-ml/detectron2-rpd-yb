@@ -4,6 +4,8 @@ Step 0) Download bat files.zip and extract files. The folder should contain thes
 
 ![image](https://user-images.githubusercontent.com/46503967/160223809-62187a5d-37ba-4bed-99f1-a190bcb13dd7.png)
 
+&nbsp;
+
 Step 1) Install C++ Build Tools
 
 Prior to starting the installation process, make sure to save any important files. In order to finish the installation, a restart is required.
@@ -26,6 +28,8 @@ Tick the box labelled "Desktop development with C++". Your installer should now 
 
 Press Install. After the installation is finished, restart your PC to finalize the installation.
 
+&nbsp;
+
 Step 2) Install Miniconda with Detectron 2
 
 To install miniconda with detectron2, run "conda_install.bat".
@@ -33,6 +37,8 @@ To install miniconda with detectron2, run "conda_install.bat".
 ![image](https://user-images.githubusercontent.com/46503967/145657820-33a85b39-a157-47d9-934d-22ebea3e2913.png)
 
 After the bat file finishes, the setup is complete. You can now run the model.
+
+&nbsp;
 
 Step 3) Running Detectron2-RPD
 
