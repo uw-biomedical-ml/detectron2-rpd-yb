@@ -40,6 +40,8 @@ Before running the model, make sure to adjust the options.ini file. The default 
 
 ![image](https://user-images.githubusercontent.com/46503967/160223848-b1763ea4-6114-45cf-a17b-5425ca2de618.png)
 
+&nbsp;
+
 VOL EXTRACTION
 
 run_extract (true/false): Extract images from your input files (.vol/.dicom).
@@ -48,6 +50,7 @@ input_dir: The path to the directory containing your vol/dicom files.
 
 extracted_dir: The path to the directory where extracted images will be stored.
 
+&nbsp;
 
 INFERENCE
 
@@ -59,6 +62,8 @@ run_inference (true/false): Run inference on extracted images. Note: Files must 
 
 create_tables (true/false): Create dataset html of model outputs. Note: Inference must already be done!
 
+&nbsp;
+
 VISUAL OUTPUT
 
 create_visuals (true/false): Create visualizations of model outputs. Note: Inference must already be done and bm/bmo/im flags set!
@@ -69,7 +74,7 @@ binary_mask_overlay (true/false): Output binary mask overlay tif files. Note: cr
 
 instance_mask_overlay (true/false): Output instance mask overlay tif files. Note: create_visuals flag must be included!
 
-
+&nbsp;
 
 To run the model, run Anaconda Prompt (miniconda3), which can be found on your computer using the Windows Search function.
 
