@@ -143,7 +143,7 @@ def main(args):
     parser.add('--output_dir', metavar = 'O', type=str, help='The path to the directory where model predictions and other data will be stored.')
     parser.add('--run_extract', action ='store_true', help='Extract images from your input files (.vol/.dicom).')
     parser.add('--run_inference', action ='store_true', help='Run inference on extracted images. Note: Files must already be extracted!')
-    parser.add('--create_tables', action ='store_true', help='Create dataset html of model outputs. Note: Inference must already be done amd volid/imgid flags set!')
+    parser.add('--create_tables', action ='store_true', help='Create dataset html of model outputs. Note: Inference must already be done!')
     parser.add('--create_visuals', action ='store_true', help='Create visualizations of model outputs. Note: Inference must already be done and bm/bmo/im flags set!')
     parser.add('--binary_mask', action ='store_true', help='Output binary mask tif files. Note: create_visuals flag must be included!')
     parser.add('--binary_mask_overlay', action ='store_true', help='Output binary mask overlay tif files. Note: create_visuals flag must be included!')

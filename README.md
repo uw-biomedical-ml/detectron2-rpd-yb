@@ -1,4 +1,6 @@
-Setting up Detectron2-RPD
+Setting up Detectron2-RPD for Windows
+
+Prerequisites: Git, which can be downloaded directly [here](https://git-scm.com/download/win) (use the default options when installing).
 
 Step 0) Download win-detectron2-rpd.zip and extract the files. The folder should contain these files:
 
@@ -90,4 +92,4 @@ Once inside the folder, run the following command to run the model:
 
 python run_program.py  --config %config%
 
-%config% = path to your config file.
+%config% = path to your config file. This is required.
