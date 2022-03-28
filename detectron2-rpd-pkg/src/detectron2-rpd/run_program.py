@@ -11,6 +11,8 @@ from Ensembler import Ensembler
 from analysis_lib import EvaluateClass,CreatePlotsRPD,OutputVis
 import logging
 import configargparse
+import progressbar
+import urllib
 logging.basicConfig(level=logging.INFO)
 
 import json
@@ -24,6 +26,22 @@ os.environ["CUDA_DEVICE_ORDER"]="PCI_BUS_ID"
 os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 
 dpi= 120
+class MyProgressBar():
+    # https://stackoverflow.com/a/53643011/3826929
+    # George C
+    def __init__(self):
+        self.pbar = None
+
+    def __call__(self, block_num, block_size, total_size):
+        if not self.pbar:
+            self.pbar=progressbar.ProgressBar(maxval=total_size)
+            self.pbar.start()
+
+        downloaded = block_num * block_size
+        if downloaded < total_size:
+            self.pbar.update(downloaded)
+        else:
+            self.pbar.finish()
 
 def create_dataset(dataset_name, extracted_path): # Creates dataset and pk file from extracted images.
     stored_data = data.rpd_data(extracted_path)
@@ -54,7 +72,7 @@ def run_prediction(cfg, dataset_name, output_path):
         if not os.path.isdir(extract_directory):
             os.mkdir(extract_directory)
             url = 'https://s3.us-west-2.amazonaws.com/comp.ophthalmology.uw.edu/models.zip'
-            path_to_zip_file, headers = urllib.request.urlretrieve(url)
+            path_to_zip_file, headers = urllib.request.urlretrieve(url, reporthook = MyProgressBar())
             with zipfile.ZipFile(path_to_zip_file, 'r') as zip_ref:
                 zip_ref.extractall(extract_directory)
         file_name = mdl + "_model_final.pth"
