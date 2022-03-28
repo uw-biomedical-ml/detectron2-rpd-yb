@@ -46,9 +46,10 @@ def rpd_data(extracted_path):
     extracted_files = glob.glob(os.path.join(extracted_path,'**/*.png'),recursive=True)
     print("Generating dataset of images...")
     for fn in extracted_files:
-        imageid = fn.split("/")[-1]
+        fn_adjusted = fn.replace('\\','/')
+        imageid = fn_adjusted.split("/")[-1]
         im = cv2.imread(fn)
-        dat = dict(file_name = fn, height = im.shape[0], width = im.shape[1], image_id = imageid)
+        dat = dict(file_name = fn_adjusted, height = im.shape[0], width = im.shape[1], image_id = imageid)
         dataset.append(dat)
     print(f"Found {len(dataset)} images")
     print(f"Found {instances} instances")
