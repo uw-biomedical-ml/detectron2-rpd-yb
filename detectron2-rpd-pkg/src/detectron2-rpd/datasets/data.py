@@ -28,11 +28,12 @@ def extract_files(dirtoextract, extracted_path):
         print(f"Extracting files from {dirtoextract} into {extracted_path}...")
         files_to_extract = glob.glob(os.path.join(dirtoextract,'**/*.vol'),recursive=True)
         for i,line in enumerate(tqdm(files_to_extract)):
-            fpath = line.strip('\n').replace('\\','/')
+            fpath = line.strip('\n')
+            vol = volFile(fpath)
+            fpath = fpath.replace('\\','/')
             path, scan_str = fpath.strip('.vol').rsplit('/',1)
             extractpath = os.path.join(extracted_path,scan_str.replace('_','/'))
             os.makedirs(extractpath,exist_ok=True)
-            vol = volFile(fpath)
             preffix = extractpath+'/'+scan_str+'_oct'
             vol.renderOCTscans(preffix)
     else:
