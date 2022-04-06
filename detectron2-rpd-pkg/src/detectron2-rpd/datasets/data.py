@@ -10,6 +10,7 @@ from tqdm import tqdm
 import glob
 import sys
 import distutils
+from distutils import util
 
 
 script_dir = os.path.dirname(__file__)
