@@ -34,7 +34,7 @@ def extract_files(dirtoextract, extracted_path):
             path, scan_str = fpath.strip('.vol').rsplit('/',1)
             extractpath = os.path.join(extracted_path,scan_str.replace('_','/'))
             os.makedirs(extractpath,exist_ok=True)
-            preffix = extractpath+'/'+scan_str+'_oct'
+            preffix = os.path.join(extractpath, scan_str+'_oct')
             vol.renderOCTscans(preffix)
     else:
         pass
