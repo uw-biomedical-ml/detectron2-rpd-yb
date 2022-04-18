@@ -437,6 +437,8 @@ def Wilson_CI(p,n,z):
     lower = fact*(asym-sym)
     return (lower,upper)
 
+def stat_CI(p,n,z):
+    return z*np.sqrt(p*(1-p)/n)
 class EvaluateClass(COCOEvaluator):  
     def __init__(self,dataset_name, output_dir,prob_thresh=0.5,iou_thresh = 0.1,evalsuper=True):
         super().__init__(dataset_name,tasks={'bbox','segm'},output_dir = output_dir)
