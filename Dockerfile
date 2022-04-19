@@ -7,4 +7,5 @@ RUN pip install opencv-python-headless \
     pip install sklearn \
     pip install configargparse \
     pip install progressbar \
+    pip install pydicom \
     pip install detectron2 -f https://dl.fbaipublicfiles.com/detectron2/wheels/cu113/torch1.10/index.html
