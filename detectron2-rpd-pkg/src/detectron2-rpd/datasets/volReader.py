@@ -126,7 +126,6 @@ class volFile():
         wholefile = OrderedDict()
         decode_hex = codecs.getdecoder("hex_codec")
         with open(fn, "rb") as fin:
-            print(fn)
             header = OrderedDict()
             header["version"] = fin.read(12)
             header["octSizeX"] = struct.unpack("I", fin.read(4))[0] # lateral resolution
