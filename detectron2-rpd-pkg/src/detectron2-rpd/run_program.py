@@ -11,6 +11,8 @@ from Ensembler import Ensembler
 from analysis_lib import EvaluateClass,CreatePlotsRPD,OutputVis
 import logging
 import configargparse
+import progressbar
+import urllib
 logging.basicConfig(level=logging.INFO)
 
 import json
@@ -24,6 +26,22 @@ os.environ["CUDA_DEVICE_ORDER"]="PCI_BUS_ID"
 os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 
 dpi= 120
+class MyProgressBar():
+    # https://stackoverflow.com/a/53643011/3826929
+    # George C
+    def __init__(self):
+        self.pbar = None
+
+    def __call__(self, block_num, block_size, total_size):
+        if not self.pbar:
+            self.pbar=progressbar.ProgressBar(maxval=total_size)
+            self.pbar.start()
+
+        downloaded = block_num * block_size
+        if downloaded < total_size:
+            self.pbar.update(downloaded)
+        else:
+            self.pbar.finish()
 
 def create_dataset(dataset_name, extracted_path): # Creates dataset and pk file from extracted images.
     stored_data = data.rpd_data(extracted_path)
@@ -54,7 +72,7 @@ def run_prediction(cfg, dataset_name, output_path):
         if not os.path.isdir(extract_directory):
             os.mkdir(extract_directory)
             url = 'https://s3.us-west-2.amazonaws.com/comp.ophthalmology.uw.edu/models.zip'
-            path_to_zip_file, headers = urllib.request.urlretrieve(url)
+            path_to_zip_file, headers = urllib.request.urlretrieve(url, reporthook = MyProgressBar())
             with zipfile.ZipFile(path_to_zip_file, 'r') as zip_ref:
                 zip_ref.extractall(extract_directory)
         file_name = mdl + "_model_final.pth"
@@ -140,10 +158,11 @@ def main(args):
     parser.add('--dataset_name', metavar = 'N', type=str, help='The name of your dataset.')
     parser.add('--input_dir', metavar = 'I', type=str, help='The path to the directory containing your vol/dicom files.'  )
     parser.add('--extracted_dir', metavar = 'E', type=str, help='The path to the directory where extracted images will be stored.')
+    parser.add('--input_format', type=str, help='Format of the files to extract: VOL or DICOM.')
     parser.add('--output_dir', metavar = 'O', type=str, help='The path to the directory where model predictions and other data will be stored.')
     parser.add('--run_extract', action ='store_true', help='Extract images from your input files (.vol/.dicom).')
     parser.add('--run_inference', action ='store_true', help='Run inference on extracted images. Note: Files must already be extracted!')
-    parser.add('--create_tables', action ='store_true', help='Create dataset html of model outputs. Note: Inference must already be done amd volid/imgid flags set!')
+    parser.add('--create_tables', action ='store_true', help='Create dataset html of model outputs. Note: Inference must already be done!')
     parser.add('--create_visuals', action ='store_true', help='Create visualizations of model outputs. Note: Inference must already be done and bm/bmo/im flags set!')
     parser.add('--binary_mask', action ='store_true', help='Output binary mask tif files. Note: create_visuals flag must be included!')
     parser.add('--binary_mask_overlay', action ='store_true', help='Output binary mask overlay tif files. Note: create_visuals flag must be included!')
@@ -153,6 +172,7 @@ def main(args):
     dataset_name = args.dataset_name
     input_dir = args.input_dir
     extracted = args.extracted_dir
+    input_format = args.input_format
     output = args.output_dir
     run_ext = args.run_extract
     run_inf = args.run_inference
@@ -167,7 +187,7 @@ def main(args):
         if not os.path.isdir(extracted):
             print("Extracted dir does not exist! Making extracted dir...")
             os.mkdir(extracted)
-        data.extract_files(input_dir, extracted)
+        data.extract_files(input_dir, extracted, input_format)
         print("Image extraction complete!")
     if run_inf:
         print("Creating dataset from extracted images...")
@@ -185,6 +205,8 @@ def main(args):
         run_ensemble(dataset_name, output)
         print("Ensemble complete!")
     if make_table or make_visuals:
+        print("Registering dataset...")
+        register_dataset(dataset_name)
         print("Evaluating dataset...")
         eval = evaluate_dataset(dataset_name, output, iou_thresh, prob_thresh)
         print("Creating dataset table...")

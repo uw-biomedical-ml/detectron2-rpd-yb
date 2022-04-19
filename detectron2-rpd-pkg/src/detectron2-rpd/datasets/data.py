@@ -15,8 +15,6 @@ from pydicom.fileset import FileSet
 import pandas as pd
 
 
-
-
 script_dir = os.path.dirname(__file__)
 class Error(Exception):
     """Base class for exceptions in this module."""
@@ -24,26 +22,27 @@ class Error(Exception):
 
 
 
-def extract_files(dirtoextract, extracted_path):
-    proceed = True
-    if ((os.path.isdir(extracted_path)) and (len(os.listdir(extracted_path))!=0)):
-        val = input(f'{extracted_path} exists and is not empty. Files may be overwritten. Proceed with extraction? (Y/N)')
-        proceed = bool(distutils.util.strtobool(val))
-    if proceed:
-        print(f"Extracting files from {dirtoextract} into {extracted_path}...")
-        files_to_extract = glob.glob(os.path.join(dirtoextract,'**/*.vol'),recursive=True)
-        for i,line in enumerate(tqdm(files_to_extract)):
-            fpath = line.strip('\n').replace('\\','/')
-            path, scan_str = fpath.strip('.vol').rsplit('/',1)
-            extractpath = os.path.join(extracted_path,scan_str.replace('_','/'))
-            os.makedirs(extractpath,exist_ok=True)
-            vol = volFile(fpath)
-            preffix = extractpath+'/'+scan_str+'_oct'
-            vol.renderOCTscans(preffix)
-    else:
-        pass
+# def extract_files(dirtoextract, extracted_path):
+#     proceed = True
+#     if ((os.path.isdir(extracted_path)) and (len(os.listdir(extracted_path))!=0)):
+#         val = input(f'{extracted_path} exists and is not empty. Files may be overwritten. Proceed with extraction? (Y/N)')
+#         proceed = bool(distutils.util.strtobool(val))
+#     if proceed:
+#         print(f"Extracting files from {dirtoextract} into {extracted_path}...")
+#         files_to_extract = glob.glob(os.path.join(dirtoextract,'**/*.vol'),recursive=True)
+#         for i,line in enumerate(tqdm(files_to_extract)):
+#             fpath = line.strip('\n')
+#             vol = volFile(fpath)
+#             fpath = fpath.replace('\\','/')
+#             path, scan_str = fpath.strip('.vol').rsplit('/',1)
+#             extractpath = os.path.join(extracted_path,scan_str.replace('_','/'))
+#             os.makedirs(extractpath,exist_ok=True)
+#             preffix = os.path.join(extractpath, scan_str+'_oct')
+#             vol.renderOCTscans(preffix)
+#     else:
+#         pass
 
-def extract_files2(dirtoextract, extracted_path, input_format):
+def extract_files(dirtoextract, extracted_path, input_format):
     assert input_format in ['vol','dicom'], 'Error: input_format must be "vol" or "dicom".'
     proceed = True
     if ((os.path.isdir(extracted_path)) and (len(os.listdir(extracted_path))!=0)):
@@ -54,12 +53,13 @@ def extract_files2(dirtoextract, extracted_path, input_format):
         if input_format == 'vol':
             files_to_extract = glob.glob(os.path.join(dirtoextract,'**/*.vol'),recursive=True)
             for i,line in enumerate(tqdm(files_to_extract)):
-                fpath = line.strip('\n').replace('\\','/')
+                fpath = line.strip('\n')
+                vol = volFile(fpath)
+                fpath = fpath.replace('\\','/')
                 path, scan_str = fpath.strip('.vol').rsplit('/',1)
                 extractpath = os.path.join(extracted_path,scan_str.replace('_','/'))
                 os.makedirs(extractpath,exist_ok=True)
-                vol = volFile(fpath)
-                preffix = extractpath+'/'+scan_str+'_oct'
+                preffix = os.path.join(extractpath, scan_str+'_oct')
                 vol.renderOCTscans(preffix)
         elif input_format =='dicom':
             keywords = ['SOPInstanceUID',
@@ -68,11 +68,11 @@ def extract_files2(dirtoextract, extracted_path, input_format):
                 'SeriesDate'
             ]
             list_of_dicts = []
-            dirgen = glob.iglob(os.path.join(dirtoextract,'*/DICOMDIR'))
-            for dsstr in dirgen:
+            dirgen = glob.iglob(os.path.join(dirtoextract,'**/DICOMDIR'),recursive=True)
+            for dsstr in tqdm(dirgen):
                 fs = FileSet(dcmread(dsstr))
                 fsgenOPT = genOPTfs(fs)
-                for fi in fsgenOPT:
+                for fi in tqdm(fsgenOPT):
                     dd=dict()
                     #top level keywords
                     for key in keywords:
@@ -98,10 +98,11 @@ def rpd_data(extracted_path):
     wrong_poly = 0
     extracted_files = glob.glob(os.path.join(extracted_path,'**/*.png'),recursive=True)
     print("Generating dataset of images...")
-    for fn in extracted_files:
-        imageid = fn.split("/")[-1]
+    for fn in tqdm(extracted_files):
+        fn_adjusted = fn.replace('\\','/')
+        imageid = fn_adjusted.split("/")[-1]
         im = cv2.imread(fn)
-        dat = dict(file_name = fn, height = im.shape[0], width = im.shape[1], image_id = imageid)
+        dat = dict(file_name = fn_adjusted, height = im.shape[0], width = im.shape[1], image_id = imageid)
         dataset.append(dat)
     print(f"Found {len(dataset)} images")
     print(f"Found {instances} instances")

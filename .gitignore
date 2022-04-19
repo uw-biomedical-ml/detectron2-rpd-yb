@@ -5,21 +5,20 @@ Fold 1_instance_refine_all.pdf
 Fold 1_refined.pk
 datasets/Fold 1_instance_refine_all.pdf
 datasets/Fold 1_refined.pk
-extracted_test_overlays/
-msk_extracted_overlays/
-instances_mask_overlays/
-msk_instances_overlays/
-output_Test Set/
+misc bat files/
+misc csv files/
+misc py files/
 *.pk
 *.pdf
 *.html
 *.json
-output_Test Set/
 *.csv
-bat files/detectron2
-Test Set_extracted/
 *.png
 *.tif
 *.pth
 detectron2-rpd-pkg/dist
 models/
+__pycache__/
+OutputTestSet/
+Extracted/
+Models/

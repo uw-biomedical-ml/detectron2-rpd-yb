@@ -141,7 +141,7 @@ class volFile():
             header["fieldSizeSlo"] = struct.unpack("I", fin.read(4))[0] # FOV in degrees
             header["scanFocus"] = struct.unpack("d", fin.read(8))[0]
             header["scanPos"] = fin.read(4)
-            header["examTime"] = struct.unpack("l", fin.read(8))[0] / 1e7
+            header["examTime"] = struct.unpack("=q", fin.read(8))[0] / 1e7
             header["examTime"] = datetime.datetime.utcfromtimestamp(header["examTime"] - (369*365.25+4) * 24*60*60) # needs to be checked
             header["scanPattern"] = struct.unpack("I", fin.read(4))[0]
             header["BscanHdrSize"] = struct.unpack("I", fin.read(4))[0]
@@ -151,18 +151,18 @@ class volFile():
             header["PatientID"] = fin.read(21)
             header["unknown2"] = fin.read(3)
             header["DOB"] = struct.unpack("d", fin.read(8))[0] - 25569
-            header["DOB"] = datetime.datetime.utcfromtimestamp(header["DOB"] * 24 * 60 * 60 ) # needs to be checked
+            header["DOB"] = datetime.datetime.utcfromtimestamp(0) + datetime.timedelta(seconds=header["DOB"] * 24 * 60 * 60 ) # needs to be checked
             header["VID"] = struct.unpack("I", fin.read(4))[0]
             header["VisitID"] = fin.read(24)
             header["VisitDate"] = struct.unpack("d", fin.read(8))[0] - 25569
-            header["VisitDate"] = datetime.datetime.utcfromtimestamp(header["VisitDate"] * 24 * 60 * 60 ) # needs to be checked
+            header["VisitDate"] = datetime.datetime.utcfromtimestamp(0) + datetime.timedelta(seconds=header["VisitDate"] * 24 * 60 * 60) # needs to be checked
             header["GridType"] = struct.unpack("I", fin.read(4))[0]
             header["GridOffset"] = struct.unpack("I", fin.read(4))[0]
 
             wholefile["header"] = header
             fin.seek(2048)
             U = array.array("B")
-            U.fromstring(fin.read(header["sizeXSlo"] * header["sizeYSlo"]))
+            U.frombytes(fin.read(header["sizeXSlo"] * header["sizeYSlo"]))
             U = np.array(U).astype("uint8").reshape((header["sizeXSlo"],header["sizeYSlo"]))
             wholefile["sloImage"] = U
 
@@ -187,7 +187,7 @@ class volFile():
                 # extract OCT B scan data
                 fin.seek(header["BscanHdrSize"] + sloOffset + i * octOffset)
                 U = array.array("f")
-                U.fromstring(fin.read(4 * header["octSizeX"] * header["octSizeZ"]))
+                U.frombytes(fin.read(4 * header["octSizeX"] * header["octSizeZ"]))
                 U = np.array(U).reshape((header["octSizeZ"],header["octSizeX"]))
                 # remove out of boundary 
                 v = struct.unpack("f", decode_hex('FFFF7F7F')[0])
@@ -200,7 +200,7 @@ class volFile():
                 # extract OCT segmentations data
                 fin.seek(256 + sloOffset + i * octOffset)
                 U = array.array("f")
-                U.fromstring(fin.read(4 * header["octSizeX"] * bscanHead["numSeg"]))
+                U.frombytes(fin.read(4 * header["octSizeX"] * bscanHead["numSeg"]))
                 U = np.array(U)
                 U[U == v] = 0.
 
