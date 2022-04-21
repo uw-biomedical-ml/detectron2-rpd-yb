@@ -1,6 +1,6 @@
 Setting up Detectron2-RPD for Windows
 
-Prerequisites: Git, which can be downloaded directly [here](https://git-scm.com/download/win) (use the default options when installing).
+Prerequisites: Git and CUDA 10.2, which can be downloaded directly [here](https://git-scm.com/download/win) and [here](https://developer.nvidia.com/cuda-10.2-download-archive?target_os=Windows&target_arch=x86_64) (use the default options when installing).
 
 Step 0) Download win-detectron2-rpd.zip and extract the files. The folder should contain these files:
 
