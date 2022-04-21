@@ -28,7 +28,7 @@ Tick the box labelled "Desktop development with C++" (IMPORTANT). Your installer
 
 ![image](https://user-images.githubusercontent.com/46503967/145657439-e145402a-dc26-4279-8705-1a2834fba5f4.png)
 
-Press Install. After the installation is finished, restart your PC to finalize the installation.
+Press Install. (IMPORTANT) After the installation is finished, restart your PC to finalize the installation.
 
 &nbsp;
 
