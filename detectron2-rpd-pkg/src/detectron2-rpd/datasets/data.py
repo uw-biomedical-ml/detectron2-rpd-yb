@@ -9,7 +9,7 @@ from PIL import Image
 from .volReader import volFile
 from tqdm import tqdm
 import glob
-import distutils
+import distutils.util
 from pydicom import dcmread
 from pydicom.fileset import FileSet
 import pandas as pd
