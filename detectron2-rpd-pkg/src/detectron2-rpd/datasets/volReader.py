@@ -123,6 +123,7 @@ class volFile():
             Image.fromarray(a).save("%s_%03d.png" % (filepre, i))
 
     def __parseVolFile(self, fn):
+        print(fn)
         wholefile = OrderedDict()
         decode_hex = codecs.getdecoder("hex_codec")
         with open(fn, "rb") as fin:
