@@ -113,7 +113,6 @@ class volFile():
         wf = self.wholefile
         for i in range(wf["cScan"].shape[0]):
             a = np.copy(wf["cScan"][i])
-
             if renderSeg:
                 a = np.stack((a,)*3, axis=-1)
                 for li in range(wf["segmentations"].shape[0]):
@@ -122,7 +121,7 @@ class volFile():
 
             Image.fromarray(a).save("%s_%03d.png" % (filepre, i))
 
-    def __parseVolFile(self, fn):
+    def __parseVolFile(self, fn, parseSeg=False):
         print(fn)
         wholefile = OrderedDict()
         decode_hex = codecs.getdecoder("hex_codec")
@@ -171,7 +170,8 @@ class volFile():
             octOffset = header["BscanHdrSize"] + header["octSizeX"] * header["octSizeZ"] * 4 
             bscans = []
             bscanheaders = []
-            segmentations = None
+            if parseSeg:
+                segmentations = None
             for i in range(header["numBscan"]):
                 fin.seek(16 + sloOffset + i * octOffset)
                 bscanHead = OrderedDict()
@@ -197,25 +197,24 @@ class volFile():
                 U = np.log(10000 * U + 1)
                 U = (255. * (np.clip(U, 0, np.max(U)) / np.max(U))).astype("uint8")
                 bscans.append(U)
+                if parseSeg:
+                    # extract OCT segmentations data
+                    fin.seek(256 + sloOffset + i * octOffset)
+                    U = array.array("f")
+                    U.frombytes(fin.read(4 * header["octSizeX"] * bscanHead["numSeg"]))
+                    U = np.array(U)
+                    print(U.shape)
+                    U[U == v] = 0.
+                    if segmentations == None:
+                        segmentations = []
+                        for j in range(bscanHead["numSeg"]):
+                            segmentations.append([])
 
-                # extract OCT segmentations data
-                fin.seek(256 + sloOffset + i * octOffset)
-                U = array.array("f")
-                U.frombytes(fin.read(4 * header["octSizeX"] * bscanHead["numSeg"]))
-                U = np.array(U)
-                U[U == v] = 0.
-
-                if segmentations == None:
-                    segmentations = []
                     for j in range(bscanHead["numSeg"]):
-                        segmentations.append([])
-
-                for j in range(bscanHead["numSeg"]):
-                    segmentations[j].append(U[j*header["octSizeX"]:(j+1) * header["octSizeX"]].tolist())
-
-
+                        segmentations[j].append(U[j*header["octSizeX"]:(j+1) * header["octSizeX"]].tolist())
             wholefile["cScan"] = np.array(bscans)
-            wholefile["segmentations"] = np.array(segmentations)
+            if parseSeg:
+                wholefile["segmentations"] = np.array(segmentations)
             wholefile["slice-headers"] = bscanheaders
             self.wholefile = wholefile
 

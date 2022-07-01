@@ -31,7 +31,8 @@ from detectron2.evaluation import COCOEvaluator
 import cv2
 from PIL import Image
 import matplotlib.pyplot as plt
-plt.style.use('ybpres.mplstyle')
+# plt.style.use('ybpres.mplstyle')
+plt.style.use('/data/ssong/detectron2-rpd-yb/detectron2-rpd-pkg/src/detectron2-rpd/ybpres.mplstyle')
 from matplotlib.backends.backend_pdf import PdfPages
 import seaborn as sns
 
