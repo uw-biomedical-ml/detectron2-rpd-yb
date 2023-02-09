@@ -100,6 +100,7 @@ class volFile():
     def renderOCTscans(self, filepre = "oct", renderSeg=False):
         """
         Renders OCT images a PNG file and optionally overlays segmentation lines
+        Also creates a CSV file of vol file features.
 
         Args:
             filepre (str): filename prefix. OCT Images will be named as "<prefix>_001.png"
@@ -170,6 +171,7 @@ class volFile():
             octOffset = header["BscanHdrSize"] + header["octSizeX"] * header["octSizeZ"] * 4 
             bscans = []
             bscanheaders = []
+            bscanqualities = []
             if parseSeg:
                 segmentations = None
             for i in range(header["numBscan"]):
@@ -184,6 +186,7 @@ class volFile():
                 bscanHead["quality"] = struct.unpack("f", fin.read(4))[0]
                 bscanHead["shift"] = struct.unpack("I", fin.read(4))[0]
                 bscanheaders.append(bscanHead)
+                bscanqualities.append(bscanHead["quality"])
 
                 # extract OCT B scan data
                 fin.seek(header["BscanHdrSize"] + sloOffset + i * octOffset)
@@ -216,7 +219,38 @@ class volFile():
             if parseSeg:
                 wholefile["segmentations"] = np.array(segmentations)
             wholefile["slice-headers"] = bscanheaders
+            wholefile["average-quality"] = np.mean(bscanqualities)
             self.wholefile = wholefile
+        import csv
+        from pathlib import Path, PurePath
+        volFeatures = [PurePath(fn).name, wholefile["header"]["version"].decode("utf-8").rstrip('\x00'), wholefile["header"]["numBscan"], wholefile["header"]["octSizeX"], wholefile["header"]["octSizeZ"], wholefile["header"]["distance"], wholefile["header"]["scaleX"], \
+                                wholefile["header"]["scaleZ"], wholefile["header"]["sizeXSlo"], wholefile["header"]["sizeYSlo"], wholefile["header"]["scaleXSlo"], wholefile["header"]["scaleYSlo"], wholefile["header"]["fieldSizeSlo"], \
+                                wholefile["header"]["scanFocus"], wholefile["header"]["scanPos"].decode("utf-8").rstrip('\x00'), wholefile["header"]["examTime"], wholefile["header"]["scanPattern"], wholefile["header"]["BscanHdrSize"], \
+                                wholefile["header"]["ID"].decode("utf-8").rstrip('\x00'), wholefile["header"]["ReferenceID"].decode("utf-8").rstrip('\x00'), wholefile["header"]["PID"], wholefile["header"]["PatientID"].decode("utf-8").rstrip('\x00'), wholefile["header"]["DOB"], wholefile["header"]["VID"], wholefile["header"]["VisitID"].decode("utf-8").rstrip('\x00'), wholefile["header"]["VisitDate"], \
+                                wholefile["header"]["GridType"], wholefile["header"]["GridOffset"], wholefile["average-quality"]]
+        output_dir = PurePath(fn).parent
+        output_csv = output_dir.joinpath('vols.csv')
+        if not Path(output_csv).exists():
+            print("Creating vols.csv as it does not exist.")
+            with open(output_csv, 'w', newline='') as file:
+                writer = csv.writer(file)
+                writer.writerow(["filename", "version", "numBscan", "octSizeX", "octSizeZ", "distance", "scaleX", \
+                                "scaleZ", "sizeXSlo", "sizeYSlo", "scaleXSlo", "scaleYSlo", "fieldSizeSlo", \
+                                "scanFocus", "scanPos", "examTime", "scanPattern", "BscanHdrSize", \
+                                "ID", "ReferenceID", "PID", "PatientID", "DOB", "VID", "VisitID", "VisitDate", \
+                                "GridType", "GridOffset", "Average Quality"])
+        with open(output_csv, 'r', newline='') as file:
+            existing_vols = csv.reader(file)
+            for vol in existing_vols:
+                if vol[0] == PurePath(fn).name:
+                    print("Skipping,", PurePath(fn).name, "already present in vols.csv.")
+                    return
+        with open(output_csv, 'a', newline='') as file:
+            print("Adding", PurePath(fn).name, "to vols.csv.")
+            writer = csv.writer(file)
+            writer.writerow(volFeatures)
+
+
 
     @property
     def fileHeader(self):
