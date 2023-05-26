@@ -9,6 +9,7 @@ from detectron2.checkpoint import DetectionCheckpointer
 from detectron2.evaluation import inference_on_dataset, COCOEvaluator
 from Ensembler import Ensembler
 from analysis_lib import EvaluateClass,CreatePlotsRPD,OutputVis
+import pandas as pd
 import logging
 import configargparse
 import progressbar
@@ -129,14 +130,16 @@ def output_dataset_predictions(dataset_table,vis,output_path,output_mode = 'pred
 
 def create_dfvol(dataset_name, output_path, dataset_table):
     dfvol = dataset_table.dfvol.sort_values(by=['dt_instances'],ascending=False)
-    html_str = dfvol.style.format('{:.0f}').set_table_styles(styles).render()
+    pd.set_option('styler.render.max_elements', dfvol.size+1)
+    html_str = dfvol.style.format('{:.0f}').set_table_styles(styles).to_html()
     html_file = open(os.path.join(output_path, 'dfvol_'+dataset_name+'.html'),'w')
     html_file.write(html_str)
     html_file.close()
 
 def create_dfimg(dataset_name, output_path, dataset_table):
     dfimg = dataset_table.dfimg.sort_index()
-    html_str = dfimg.style.set_table_styles(styles).render()
+    pd.set_option('styler.render.max_elements', dfimg.size+1)
+    html_str = dfimg.style.set_table_styles(styles).to_html()
     html_file = open(os.path.join(output_path, 'dfimg_'+dataset_name+'.html'),'w')
     html_file.write(html_str)
     html_file.close()

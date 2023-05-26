@@ -8,6 +8,7 @@ datasets/Fold 1_refined.pk
 misc bat files/
 misc csv files/
 misc py files/
+options-debug.ini
 *.pk
 *.pdf
 *.html
@@ -15,7 +16,9 @@ misc py files/
 *.csv
 *.png
 *.tif
+*.tiff
 *.pth
+*.lock
 detectron2-rpd-pkg/dist
 models/
 __pycache__/
